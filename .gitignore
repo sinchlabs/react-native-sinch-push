@@ -1,0 +1,36 @@
+# OSX
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build output
+lib/
+
+# Android
+android/build/
+android/.gradle/
+android/.cxx/
+android/local.properties
+android/generated/
+*.iml
+
+# iOS / CocoaPods
+ios/build/
+Pods/
+*.xcworkspace
+
+# Codegen output
+**/generated/
+.protoc-cache/
+
+# Editors
+.idea/
+.vscode/
+
+# Agent artifacts (wayfinder map, research notes, AI config)
+wayfinder/
+research/
+.claude/
