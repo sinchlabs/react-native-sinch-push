@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package sinch.chat.sdk.v1alpha2;
+
+import "sinch/conversationapi/type/conversation_message.proto";
+import "sinch/conversationapi/type/conversation_event.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "sinch/chat/sdk/v1alpha2/resources.proto";
+
+option go_package = "sinch-sdk-send-service/pkg/gen/proto/sinch/chat/sdk/v1alpha2";
+option java_package = "com.sinch.chat.sdk.v1alpha2";
+
+service SdkService {
+    rpc IssueAnonymousToken (IssueAnonymousTokenRequest) returns (IssueAnonymousTokenResponse) {}
+    rpc IssueTokenWithSignedUuid (IssueTokenWithSignedUuidRequest) returns (IssueTokenWithSignedUuidResponse) {}
+    rpc Send (SendRequest) returns (SendResponse) {}
+    rpc GetHistory (GetHistoryRequest) returns (GetHistoryResponse) {}
+    rpc SubscribeToStream (SubscribeToStreamRequest) returns (stream SubscribeToStreamResponse) {}
+    rpc SubscribeToPush (SubscribeToPushRequest) returns (google.protobuf.Empty) {}
+    rpc UploadMedia (UploadMediaRequest) returns (UploadMediaResponse) {}
+    rpc UploadMediaStream (stream UploadMediaRequest) returns (UploadMediaResponse) {}
+    rpc GetChannels (GetChannelsRequest) returns (GetChannelsResponse) {}
+    rpc IssueRtcAccessToken (stream IssueRtcAccessTokenRequest) returns (IssueRtcAccessTokenResponse) {}
+    rpc SubscribeToChannelsStream (SubscribeToChannelsStreamRequest) returns (stream SubscribeToChannelsStreamResponse) {}
+    rpc CheckHealth (google.protobuf.Empty) returns (google.protobuf.Empty) {}
+}
+
+message IssueAnonymousTokenRequest {
+    string project_id = 1;
+    string client_id = 2;
+}
+
+message IssueAnonymousTokenResponse {
+    string access_token = 1;
+}
+
+message IssueTokenWithSignedUuidRequest {
+    string project_id = 1;
+    string client_id = 2;
+    string uuid = 3;
+    string uuid_hash = 4;
+}
+
+message IssueTokenWithSignedUuidResponse {
+    string access_token = 1;
+}
+
+message HeartBeat {
+    optional google.protobuf.Timestamp timestamp = 1;
+}
+
+message SendRequest {
+    oneof payload {
+        sinch.conversationapi.type.ContactMessage message = 1;
+        sinch.conversationapi.type.ContactEvent event = 2;
+        HeartBeat heartbeat = 5;
+    }
+    optional string metadata = 3;
+    optional string topic_id = 4;
+}
+
+message SendResponse {
+    string message_id = 1;
+}
+
+message GetHistoryRequest {
+    optional string page_token = 1;
+    optional int32 page_size = 2;
+    optional string topic_id = 3;
+}
+
+message GetHistoryResponse {
+    repeated Entry entries = 1;
+    string next_page_token = 2;
+}
+
+message SubscribeToStreamRequest {
+    optional google.protobuf.Timestamp start_time = 1;
+    optional string topic_id = 2;
+
+    // Default 60000 ms (60s)
+    optional int32 user_unavailable_delay_ms = 3;
+
+    optional bool is_heartbeat_enabled = 4;
+}
+
+message SubscribeToStreamResponse {
+    optional Entry entry = 2;
+    optional bool heartbeat = 3;
+}
+
+message SubscribeToPushRequest {
+    string token = 1;
+    string expire_time = 2;
+    optional PushPlatform platform = 3;
+
+    optional string p256dh = 4;
+    optional string endpoint = 5;
+
+    // optional when this endpoint is public.
+    message Authentication {
+        string project_id = 1;
+        string client_id = 2;
+        string config_id = 3;
+        string uuid = 4;
+        string uuid_hash = 5;
+    }
+    optional Authentication authentication = 6;
+}
+
+message UploadMediaRequest {
+    bytes data = 1;
+    string mime_type = 2;
+    string file_name = 3;
+}
+
+message UploadMediaResponse {
+    string url = 1;
+    int64 content_length = 2;
+}
+
+message IssueRtcAccessTokenRequest {}
+
+message IssueRtcAccessTokenResponse {
+    string access_token = 1;
+}
+
+message GetChannelsRequest {
+    optional int32 pageSize = 1;
+    optional string pageToken = 2;
+}
+
+message GetChannelsResponse {
+    repeated Channel channels = 1;
+    string next_page_token = 2;
+}
+
+message SubscribeToChannelsStreamRequest {}
+
+message SubscribeToChannelsStreamResponse {
+    Channel channel = 1;
+}

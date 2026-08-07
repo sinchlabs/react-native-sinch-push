@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "google/protobuf/timestamp.proto";
+import "sinch/conversationapi/type/reason.proto";
+import "sinch/conversationapi/type/status.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "MessageStatusProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+message MessageStatus {
+
+  // Status of the message
+  sinch.conversationapi.type.Status status = 1;
+
+  // Timestamp at which the current status occurred
+  google.protobuf.Timestamp event_time = 2;
+
+  // Optional: If status is FAILED, reason of failure
+  string reason = 3;
+}

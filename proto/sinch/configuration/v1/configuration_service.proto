@@ -1,0 +1,43 @@
+// conversation-api/private:1.1+9c0b5630323aabcf9381fac0cd1f2faa
+// This is a file fetched by Protopack. Please don't manually change it.
+syntax = "proto3";
+
+package sinch.conversationapi.configuration.v1;
+
+option csharp_namespace = "Sinch.ConversationApi.Configuration.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\Configuration\\V1beta";
+option java_package = "com.sinch.conversationapi.configuration.v1";
+option java_multiple_files = true;
+option java_outer_classname = "ConfigurationServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/configuration/v1";
+
+service Configuration {
+  rpc GetCallbackConfiguration(GetCallbackConfigurationRequest) returns (CallbackConfiguration) {}
+  rpc GetAuthenticationTypes(GetAuthenticationTypesRequest) returns (GetAuthenticationTypesResponse) {}
+}
+
+message GetCallbackConfigurationRequest {
+  // Required. The ID of the project owning the app.
+  string project_id = 1;
+
+  // Required. The ID of the app to get configuration for.
+  string app_id = 2;
+}
+
+
+message CallbackConfiguration {
+  /* Output only. The callback urls that should be configured
+   * on each channel to make the callbacks go to the Conversation API. */
+  map<string, string> callback_urls = 1;
+}
+
+message GetAuthenticationTypesRequest {
+  // Required. The ID of the project owning the app.
+  string project_id = 1;
+}
+
+message GetAuthenticationTypesResponse {
+  /* Output only. The authentication types for each underlying channel.
+   * Key will be ConversationChannel and value will be STATIC_BEARER or STATIC_TOKEN */
+  map<string, string> authenticationTypeByChannel = 1;
+}

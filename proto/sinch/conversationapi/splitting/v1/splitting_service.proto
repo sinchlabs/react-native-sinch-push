@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package sinch.conversationapi.splitting.v1;
+
+import "sinch/conversationapi/type/conversation_message.proto";
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Splitting.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\Splitting\\V1beta";
+option java_package = "com.sinch.conversationapi.splitting.v1";
+option java_multiple_files = true;
+option java_outer_classname = "SplittingServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/splitting/v1;splitting";
+
+// The Splitting API
+service Splitting {
+  /* Split a message
+   *
+   * Splits the message to fit the channel-specific capacity for the requested channels.
+   * No message is sent to the contact. */
+  rpc SplitMessage(SplitMessageRequest) returns (SplitMessageResponse) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/messages:split"
+      body: "*"
+    };
+  }
+}
+
+message SplitMessageRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the app used to split the message.
+  string app_id = 2;
+
+  // Required. The message that should be split.
+  sinch.conversationapi.type.AppMessage app_message = 3;
+
+  // Required. The list of channels for which the message shall be split under.
+  repeated sinch.conversationapi.type.ConversationChannel channels = 4;
+}
+
+message SplitMessageResponse {
+  /* Output only. The split message for the different channels.
+   * The keys in the map correspond to channel names, as defined by the type
+   * ConversationChannel. */
+  map<string, ChannelMessageSegments> suggested_segments = 1;
+}
+
+message ChannelMessageSegments {
+  // Required. Array of segments
+  repeated MessageSegment message_segments = 1;
+}
+
+message MessageSegment {
+  // Required. Segment Part Number
+  int32 segment_part_number = 1;
+
+  // Required. One of Conv-API message type
+  sinch.conversationapi.type.AppMessage app_message = 2;
+}

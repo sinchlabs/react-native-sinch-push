@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package sinch.conversationapi.policy.v1;
+
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Policy.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\Policy\\V1beta";
+option java_package = "com.sinch.conversationapi.policy.v1";
+option java_multiple_files = true;
+option java_outer_classname = "ContactRetentionPolicyServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/policy/v1;policy";
+
+// The Contact Retention Policy API
+service ContactRetentionPolicy {
+  /* Update the contact retention policy for a project.
+   *
+   * A policy will be created if no policy exists. */
+  rpc UpdateContactRetentionPolicy(UpdateContactRetentionPolicyRequest) returns (ContactRetentionDuration) {
+    option(google.api.http) = {
+      patch: "/v1/projects/{project_id}/policies/retention/contact"
+      body: "policy"
+    };
+  }
+
+  /* Deletes the contact retention policy for a project.
+   *
+   * Deleting a contact retention policy will cause contacts
+   * to be saved until they are deleted by an explicit action.
+   * The default behavior is to save contacts until they are deleted
+   * by an explicit action. */
+  rpc DeleteContactRetentionPolicy (DeleteContactRetentionPolicyRequest) returns (google.protobuf.Empty) {
+    option(google.api.http) = {
+      delete: "/v1/projects/{project_id}/policies/retention/contact"
+    };
+  }
+
+  // Get the contact retention policy for a project.
+  rpc GetContactRetentionPolicy (GetContactRetentionPolicyRequest) returns (ContactRetentionDuration) {
+    option(google.api.http) = {
+      get: "/v1/projects/{project_id}/policies/retention/contact"
+    };
+  }
+}
+
+message UpdateContactRetentionPolicyRequest {
+  // Required. The Project ID to update the policy for.
+  string project_id = 1;
+
+  // Required. The updated policy.
+  ContactRetentionDuration policy = 2;
+}
+
+message DeleteContactRetentionPolicyRequest {
+  // Required. The Project ID to delete the policy for.
+  string project_id = 1;
+}
+
+message GetContactRetentionPolicyRequest {
+  // Required. The Project ID to get the policy for.
+  string project_id = 1;
+}
+
+message ContactRetentionDuration {
+  /* Required. The number of days to retain contacts for.
+   *
+   * The contacts may be deleted up to 24hours after the end of the retention
+   * period. The value must be within the range [1, 3650]. */
+  uint32 days = 1;
+}

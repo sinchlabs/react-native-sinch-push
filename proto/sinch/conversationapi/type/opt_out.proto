@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/recipient.proto";
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "sinch/conversationapi/type/processing_strategy.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "OptOutProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Represents an explicit Opt-Out registration
+ *
+ * An Opt-Out contains the identity of the recipient which
+ * retract its consent to receive messages from Conversation API apps
+ * on a given channel.
+ */
+message OptOut {
+  // Required. The app for which the Opt-Out is being registered.
+  string app_id = 1;
+
+  // Required. The contact or the list of channel identities opting out.
+  sinch.conversationapi.type.Recipient recipient = 2;
+
+  /* Required. The channels covered by this Opt-Out.
+   * The default are all the channels for a contact if recipient is
+   * contact_id or the channels in the channel_identities list.
+   */
+  repeated sinch.conversationapi.type.ConversationChannel channels = 3;
+  /* Optional.
+   * Provides the ability to change the default processing strategy and not create a contact during opt-out. */
+  sinch.conversationapi.type.ProcessingStrategy processing_strategy = 4;
+}

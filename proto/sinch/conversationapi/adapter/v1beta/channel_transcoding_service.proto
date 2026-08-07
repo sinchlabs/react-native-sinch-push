@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package sinch.conversationapi.adapter.v1beta;
+
+import "sinch/conversationapi/adapter/type/app_message_data.proto";
+import "sinch/conversationapi/type/reason.proto";
+
+option csharp_namespace = "Sinch.Conversationapi.Adapter.V1Beta";
+option php_namespace = "Sinch\\Conversationapi\\Adapter\\V1beta";
+option java_package = "com.sinch.conversationapi.adapter.v1beta";
+option java_multiple_files = true;
+option java_outer_classname = "ChannelTranscodingServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/adapter/v1beta";
+
+// Defines service to get the transcoded format of a generic message
+service ChannelTranscoding {
+    rpc TranscodeChannelMessage (TranscodeChannelMessageRequest) returns (TranscodeChannelMessageResponse);
+}
+
+message TranscodeChannelMessageRequest {
+    // Required. The AppMessageDataType contains the message to be transcoded.
+    sinch.conversationapi.adapter.type.AppMessageData app_message_data = 1;
+}
+
+message TranscodeChannelMessageResponse {
+    // Optional. The transcoded_message in json format if the transcoding was successful.
+    string transcoded_message = 1;
+
+    // Optional. A reason shall be present if the transcoding failed.
+    sinch.conversationapi.type.Reason reason = 6;
+}

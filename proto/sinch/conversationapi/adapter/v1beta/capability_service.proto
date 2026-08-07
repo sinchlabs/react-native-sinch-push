@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package sinch.conversationapi.adapter.v1beta;
+
+import "sinch/conversationapi/type/reason.proto";
+import "sinch/conversationapi/type/authentication.proto";
+import "sinch/conversationapi/type/capability_notification.proto";
+
+option csharp_namespace = "Sinch.Conversationapi.Adapter.V1Beta";
+option php_namespace = "Sinch\\Conversationapi\\Adapter\\V1beta";
+option java_package = "com.sinch.conversationapi.adapter.v1beta";
+option java_multiple_files = true;
+option java_outer_classname = "CapabilityServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/adapter/v1beta";
+
+// Capability service
+service ChannelCapability {
+    rpc GetCapability(GetCapabilityRequest) returns (GetCapabilityResponse);
+}
+
+message GetCapabilityRequest {
+    // Required. Channel credential.
+    // In case of multiple credentials available on channel first credentials from list will be used.
+    sinch.conversationapi.type.ConversationChannelCredential channel_credential = 1;
+
+    // Channel identity for which to perform the capability check.
+    string channel_identity = 2;
+
+    // Optional. Channel credential list.
+    // Set when channel is supporting multiple credentials.
+    repeated sinch.conversationapi.type.ConversationChannelCredential channel_credential_list = 3;
+}
+
+message GetCapabilityResponse {
+    // Required.
+    sinch.conversationapi.type.CapabilityStatus capability_status = 1;
+    // Optional. A reason shall be present if the capability check failed.
+    sinch.conversationapi.type.Reason reason = 2;
+    // Optional. A list of channel-specific capability identifiers.
+    repeated string channel_capabilities = 3;
+}

@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation_channel.proto";
+
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "DuplicatedContactChannelIdentitiesNotificationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+message DuplicatedContactChannelIdentitiesNotification {
+
+  /* List which contains found duplicated identities */
+  repeated DuplicatedIdentity duplicated_identities= 1;
+}
+
+message DuplicatedIdentity {
+
+  // Required. Channel on which duplicated identity was found.
+  sinch.conversationapi.type.ConversationChannel channel = 1;
+  // Required. List of contact_ids with duplicated channel identity.
+  repeated string contact_ids = 2;
+}

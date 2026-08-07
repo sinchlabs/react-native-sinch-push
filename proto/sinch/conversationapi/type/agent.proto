@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "AgentProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+message Agent {
+  // Required. Name of the agent eg. `SinchBot` or `John Doe`
+  string display_name = 1;
+
+  // Required. Type of the Agent
+  AgentType type = 2;
+
+  // Optional. Picture of the agent
+  string picture_url = 3;
+}
+
+enum AgentType {
+  UNKNOWN_AGENT_TYPE = 0;
+
+  // Agent is a human
+  HUMAN = 1;
+
+  // Agent is a bot
+  BOT = 3;
+}

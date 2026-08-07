@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package sinch.conversationapi.app.v1;
+
+import "google/api/annotations.proto";
+import "sinch/conversationapi/type/app.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.App.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\App\\V1beta";
+option java_package = "com.sinch.conversationapi.app.v1";
+option java_multiple_files = true;
+option java_outer_classname = "BatchAppServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/app/v1;app";
+
+service BatchApp {
+
+    // Get apps
+    rpc GetAppsBatch(GetAppsBatchRequest) returns (ListAppsBatchResponse) {
+    }
+
+}
+
+message GetAppsBatchRequest {
+    // Required. The parent project ID to fetch apps for and its subprojects.
+    string project_id = 1;
+    // Optional. Limit the subprojects to those listed here. This can only narrow
+    // down the results. It will not return apps that are not under the parent
+    // project defined above.
+    repeated string subproject_ids = 2;
+    // Optional. The page size to set on the requests to ProjectService.
+    // The default is 1000 (maximum possible value)
+    uint32 list_projects_page_size = 3;
+}
+
+message ListAppsBatchResponse {
+  // List of apps belonging to a specific project ID.
+  repeated ProjectAppWrapper apps = 1;
+}
+
+message ProjectAppWrapper {
+    string project_id = 1;
+    sinch.conversationapi.type.App app = 2;
+}

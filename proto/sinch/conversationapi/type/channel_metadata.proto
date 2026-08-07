@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "google/protobuf/struct.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ChannelMetadataProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Represents additional channel metadata that may be passed by some channels
+ */
+message ChannelMetadata {
+  oneof metadata {
+    AppleMetadata apple = 1;
+    google.protobuf.Struct sinch_chat = 2; 
+  }
+}
+
+message AppleMetadata {
+  // Optional. See: https://register.apple.com/resources/messages/messaging-documentation/message-with-customers#about-intent-group-and-body-values
+  string group = 1;
+  // Optional. See: https://register.apple.com/resources/messages/messaging-documentation/message-with-customers#about-intent-group-and-body-values
+  string intent = 2;
+  // Optional.
+  string locale = 3;
+  // Optional. Defines message type. E.g. 'rsa' is a satellite message
+  string message_type = 4;
+  // Optional. Message number. Needed to identify satellite messages' sequence
+  int32 message_number = 5;
+  // Optional.
+  repeated string capabilities = 6;
+  // Optional.
+  string user_id = 7;
+  // Optional.
+  string reference_id = 8;
+}

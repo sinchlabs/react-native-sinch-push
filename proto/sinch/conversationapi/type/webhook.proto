@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "WebhookProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Webhook
+ *
+ * Represents a destination for receiving callbacks from the Conversation API. */
+message Webhook {
+  // Output only. The ID of the webhook.
+  string id = 1;
+  // The app that this webhook belongs to.
+  string app_id = 2;
+  /* The target url where events should be sent to.
+   * Maximum URL length is 742. */
+  string target = 3;
+  // Type of the target url.
+  WebhookTargetType target_type = 4;
+  /* Optional secret be used to sign contents of webhooks sent by the Conversation API.
+   * You can then use the secret to verify the signature. */
+  string secret = 5;
+
+  /* An array of triggers that should trigger the webhook and result in a
+   * event being sent to the target url. */
+  repeated WebhookTrigger triggers = 6;
+
+  /* Optional. Client Credentials that will be used to obtain and attach an Access Token
+   * to the callbacks originating from the Conversation API. */
+  ClientCredentials client_credentials = 7;
+}
+
+enum WebhookTargetType {
+  DISMISS = 0;
+  GRPC = 1;
+  HTTP = 2;
+}
+
+// En event triggering Conversation API callback
+enum WebhookTrigger {
+  // Using this value will cause errors.
+  UNSPECIFIED_TRIGGER = 0;
+  // Subscribe to delivery receipts for a message sent.
+  MESSAGE_DELIVERY = 1;
+  // Subscribe to delivery receipts for a event sent.
+  EVENT_DELIVERY = 2;
+  // Subscribe to inbound messages from end users on the underlying channels.
+  MESSAGE_INBOUND = 3;
+  // Subscribe to inbound events from end users on the underlying channels.
+  EVENT_INBOUND = 4;
+  // Subscribe to an event that is triggered when a new conversation has been started.
+  CONVERSATION_START = 5;
+  // Subscribe to an event that is triggered when a active conversation has been stopped.
+  CONVERSATION_STOP = 6;
+  // Subscribe to an event that is triggered when a new contact has been created.
+  CONTACT_CREATE = 7;
+  // Subscribe to an event that is triggered when a contact has been deleted.
+  CONTACT_DELETE = 8;
+  // Subscribe to an event that is triggered when a two contacts are merged.
+  CONTACT_MERGE = 9;
+  // Subscribe to callbacks that are not natively supported by the Conversation API.
+  UNSUPPORTED = 10;
+  // Subscribe to opt_ins.
+  OPT_IN = 11;
+  // Subscribe to opt_outs.
+  OPT_OUT = 12;
+  // Subscribe to see get capability results.
+  CAPABILITY = 13;
+  // Subscribe to get an event when a conversation is deleted
+  CONVERSATION_DELETE = 14;
+  reserved 15;
+  // Subscribe to an event that is triggered when a contact has been updated.
+  CONTACT_UPDATE = 16;
+  // Subscribe to direct channel event.
+  CHANNEL_EVENT = 17;
+  // Subscribe to Smart conversation analysis.
+  SMART_CONVERSATION = 18;
+  // Subscribe to Record Notifications.
+  RECORD_NOTIFICATION = 19;
+  // Subscribe to message submit Notifications.
+  MESSAGE_SUBMIT = 20;
+  // Subscribe to contact identity duplications found during event/message processing chain.
+  CONTACT_IDENTITIES_DUPLICATION = 21;
+  // Subscribe to inbound messages from end users on the underlying channels with PII and profanity content redacted.
+  MESSAGE_INBOUND_SMART_CONVERSATION_REDACTION = 22;
+}
+
+message ClientCredentials {
+  // Required. The endpoint that will be used in the Client Credentials flow.
+  string endpoint = 1;
+
+  // Required. The Client ID that will be used in the Client Credentials flow.
+  string client_id = 2;
+
+  // Required. The Client Secret that will be used in the Client Credentials flow.
+  string client_secret = 3;
+}

@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "sinch/conversationapi/type/contact.proto";
+import "sinch/conversationapi/type/processing_mode.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "UnsupportedCallbackProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Unsupported Channel Callback
+ *
+ * A callback received on a channel which is not
+ * natively supported by Conversation API. */
+message UnsupportedCallback {
+    // Output only. The originating channel of the unsupported callback.
+    sinch.conversationapi.type.ConversationChannel channel = 1;
+
+    // Output only. The unsupported callback received by the Conversation API.
+    string payload = 2;
+
+    // Output only. The ID of the callback.
+    string id = 3;
+
+    // Output only. The ID of the conversation.
+    string conversation_id = 4;
+
+    // Output only. The ID of the contact.
+    string contact_id = 5;
+
+    // Output only. The contact channel identity of the callback.
+    ChannelIdentity channel_identity = 6;
+
+    // Required. The processing mode.
+    sinch.conversationapi.type.ProcessingMode processing_mode = 7;
+}

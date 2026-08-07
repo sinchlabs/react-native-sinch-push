@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ConversationDeleteNotificationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+message ConversationDeleteNotification {
+    // Required. The deleted conversation.
+    sinch.conversationapi.type.Conversation conversation = 1;
+}

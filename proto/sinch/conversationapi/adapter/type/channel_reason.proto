@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package sinch.conversationapi.adapter.type;
+
+import "google/rpc/error_details.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Adapter.Type";
+option php_namespace = "Sinch\\ConversationApi\\Adapter\\Type";
+option java_package = "com.sinch.conversationapi.adapter.type";
+option java_multiple_files = true;
+option java_outer_classname = "ChannelReasonProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/adapter/type;v1beta";
+
+//Reason proto for Channel API
+message ChannelReason {
+  /* The code is a high-level classification of the error.
+   * UNKNOWN is used if no other code can be used to describe the encountered error. */
+  ReasonCode code = 1;
+
+  // Optional. If the error Reason was BAD_REQUEST, then the field violations are listed here.
+  repeated google.rpc.BadRequest.FieldViolation field_violation = 2;
+
+  // Optional. Description of the error.
+  string description = 3;
+}
+
+enum ReasonCode {
+  // UNKNOWN is used if no other code can be used to describe the encountered error.
+  UNKNOWN = 0;
+
+  // Bad request - for validation failures.
+  BAD_REQUEST = 1;
+
+  // Missing channel integration.
+  MISSING_CHANNEL_INTEGRATION = 2;
+
+  // The App was not found by the given app_id.
+  APP_ID_NOT_FOUND = 3;
+
+  // The request cannot be verified.
+  UNAUTHORIZED = 4;
+
+  // The app's queue is overloaded. The request should be retried by downstream.
+  QUEUE_OVERLOADED = 5;
+
+  // The channel credential was not found by the given channel_known_id.
+  CHANNEL_KNOWN_ID_NOT_FOUND = 6;
+}

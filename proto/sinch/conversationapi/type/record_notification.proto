@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/record_status.proto";
+import "sinch/conversationapi/type/reason.proto";
+import "sinch/conversationapi/type/contact.proto";
+import "sinch/conversationapi/type/processing_mode.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "RecordNotificationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Record Notification
+ *
+ * A record notification for an app. */
+message RecordNotification {
+  // Required. The ID of the entity.
+  string entity_id = 1;
+
+  // Required. The stored status.
+  sinch.conversationapi.type.RecordStatus record_status = 2;
+
+  // Required. The channel and contact channel identity of the entity.
+  sinch.conversationapi.type.ChannelIdentity channel_identity = 3;
+
+  // Optional. The ID of the contact. Will not be present for apps in Dispatch Mode.
+  string contact_id = 4;
+
+  // Optional. The ID of the conversation. Will not be present for apps in Dispatch Mode.
+  string conversation_id = 5;
+
+  // Optional. A reason will be present if the status is FAILED.
+  sinch.conversationapi.type.Reason reason = 6;
+
+  // Required. The processing mode.
+  sinch.conversationapi.type.ProcessingMode processing_mode = 7;
+}
+

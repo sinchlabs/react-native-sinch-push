@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "sinch/conversationapi/type/processing_mode.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "OptOutNotificationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+
+message OptOutNotification {
+  // Optional. The contact for the channel identities. Will not be present for messages sent in Dispatch Mode.
+  string contact_id = 1;
+  // Required. The channel of the opt-out.
+  sinch.conversationapi.type.ConversationChannel channel = 2;
+  // Required. The channel identity e.g., a phone number for SMS, WhatsApp and Viber Business.
+  string identity = 3;
+  // Required. Status of the opt-out registration.
+  OptOutStatus status = 4;
+  // Optional. It is set in case of errors.
+  OptOutErrorDetails error_details = 5;
+  // Output only. ID generated when submitting the opt out request.
+  string request_id = 6;
+  // Required. The processing mode.
+  sinch.conversationapi.type.ProcessingMode processing_mode = 7;
+}
+
+enum OptOutStatus {
+  OPT_OUT_STATUS_UNSPECIFIED = 0;
+  OPT_OUT_SUCCEEDED = 1;
+  OPT_OUT_FAILED = 2;
+}
+
+message OptOutErrorDetails {
+  // Human-readable error description.
+  string description = 1;
+}

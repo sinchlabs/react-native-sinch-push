@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package sinch.chat.sdk.v1alpha2;
+
+import "google/protobuf/timestamp.proto";
+import "sinch/conversationapi/type/conversation_message.proto";
+import "sinch/conversationapi/type/conversation_event.proto";
+
+option go_package = "sinch-sdk-send-service/pkg/gen/proto/sinch/chat/sdk/v1alpha2";
+
+message Entry {
+    google.protobuf.Timestamp delivery_time = 1;
+    oneof payload {
+        sinch.conversationapi.type.AppMessage app_message = 2;
+        sinch.conversationapi.type.AppEvent app_event = 3;
+        sinch.conversationapi.type.ContactMessage contact_message = 4;
+        sinch.conversationapi.type.ContactEvent contact_event = 5;
+    }
+    string entry_id = 6;
+}
+
+enum PushPlatform {
+    PLATFORM_UNSPECIFIED = 0;
+    WEB = 1;
+    IOS_SANDBOX = 2;
+    IOS = 3;
+    ANDROID = 4;
+    ANDROID_V1 = 5;
+    HUAWEI_V3 = 6;
+}
+
+enum ChannelStatus {
+    ChannelStatus_OPEN = 0;
+    ChannelStatus_CLOSED = 1;
+}
+
+message Channel {
+    string channel_id = 1;
+    string display_name = 2;
+    Entry last_entry = 3;
+    repeated string users = 4;
+    google.protobuf.Timestamp created_at = 5;
+    google.protobuf.Timestamp updated_at = 6;
+    google.protobuf.Timestamp expired_at = 7;
+    google.protobuf.Timestamp seen_at = 8;
+    ChannelStatus status = 9;
+}

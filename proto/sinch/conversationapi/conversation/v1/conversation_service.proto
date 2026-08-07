@@ -1,0 +1,350 @@
+syntax = "proto3";
+
+package sinch.conversationapi.conversation.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+import "sinch/conversationapi/type/conversation.proto";
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "sinch/conversationapi/type/conversation_message.proto";
+import "sinch/conversationapi/type/conversation_event.proto";
+import "sinch/conversationapi/type/messages_source.proto";
+import "sinch/conversationapi/type/metadata_update_strategy.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Conversation.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\Conversation\\V1beta";
+option java_package = "com.sinch.conversationapi.conversation.v1";
+option java_multiple_files = true;
+option java_outer_classname = "ConversationServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/conversation/v1;conversation";
+
+// The Conversation API
+service Conversation {
+  /* Get a conversation
+   *
+   * Retrieves a conversation by id. A conversation has two participating
+   * entities, an app and a contact. */
+  rpc GetConversation (GetConversationRequest) returns (sinch.conversationapi.type.Conversation) {
+    option(google.api.http) = {
+      get: "/v1/projects/{project_id}/conversations/{conversation_id}"
+    };
+  }
+
+  /*  Update a conversation
+   *
+   * This operation updates a conversation which can, for instance, be used to
+   * update the metadata associated with a conversation. */
+  rpc UpdateConversation (UpdateConversationRequest) returns (sinch.conversationapi.type.Conversation) {
+    option(google.api.http) = {
+      patch: "/v1/projects/{project_id}/conversations/{conversation.id}"
+      body: "conversation"
+    };
+  }
+
+  /* List conversations
+   *
+   * This operation lists all conversations that are associated with an app and/or a contact. */
+  rpc ListConversations (ListConversationsRequest) returns (ListConversationsResponse) {
+    option(google.api.http) = {
+      get: "/v1/projects/{project_id}/conversations"
+    };
+  }
+
+  /* List recent conversations
+   *
+   * This operation lists conversations and their most recent message, ordered by when the most
+   * recent message was sent for that conversation. */
+  rpc ListRecentConversations (ListRecentConversationsRequest) returns (ListRecentConversationsResponse) {
+    option(google.api.http) = {
+      get: "/v1/projects/{project_id}/conversations:recent"
+    };
+  }
+
+  /* List messages
+   *
+   * This operation lists all messages sent or received via particular processing mode (CONVERSATION/DISPATCH).
+   * - In case of conversation messages source, method lists messages associated with a conversation or a contact.
+   * - In case of dispatch messages source, method lists messages associated with an app.
+   * The messages are ordered by their accept_time property in descending order,
+   * where accept_time is a timestamp of when the message was enqueued by the Conversation API.
+   * This means messages received most recently will be listed first. */
+  rpc ListMessages (ListMessagesRequest) returns (ListMessagesResponse) {
+    option(google.api.http) = {
+      get: "/v1/projects/{project_id}/messages"
+    };
+  }
+
+
+  /* Inject messages
+   *
+   * This operation injects a conversation message into a specific conversation. */
+  rpc InjectMessage (InjectMessageRequest) returns (google.protobuf.Empty) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/conversations/{message.conversation_id}:inject-message"
+      body: "message"
+    };
+  }
+
+  /* Inject events
+   *
+   * This operation injects a conversation event into a specific conversation. */
+  rpc InjectEvent (InjectEventRequest) returns (InjectEventResponse) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/conversations/{event.conversation_id}:inject-event"
+      body: "event"
+    };
+  }
+
+
+  /* Stop conversation
+   *
+   * This operation stops the referenced conversation, if the conversation is still active.
+   * A new conversation will be created if a new message is exchanged between the app or contact
+   * that was part of the stopped conversation. */
+  rpc StopActiveConversation (StopActiveConversationRequest) returns (google.protobuf.Empty) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/conversations/{conversation_id}:stop"
+    };
+  }
+
+  /* Creates a conversation
+   *
+   * Creates a new empty conversation. It is generally not needed to create
+   * a conversation explicitly since sending or receiving a message
+   * automatically creates a new conversation if it does not already
+   * exist between the given app and contact.
+   * Creating empty conversation is useful if the metadata of the conversation
+   * should be populated when the first message in the conversation is a contact message
+   * or the first message in the conversation comes out-of-band and
+   * needs to be injected with InjectMessage endpoint. */
+  rpc CreateConversation (CreateConversationRequest) returns (sinch.conversationapi.type.Conversation) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/conversations"
+      body: "conversation"
+    };
+  }
+
+  /* Deletes a conversation
+   *
+   * Deletes a conversation together with all the messages sent as part of the conversation. */
+  rpc DeleteConversation (DeleteConversationRequest) returns (google.protobuf.Empty) {
+    option(google.api.http) = {
+      delete: "/v1/projects/{project_id}/conversations/{conversation_id}"
+    };
+  }
+}
+
+message GetConversationRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the conversation.
+  string conversation_id = 2;
+}
+
+message UpdateConversationRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The updated conversation.
+  sinch.conversationapi.type.Conversation conversation = 2;
+
+  /* Required. The update mask indicating what parts of the conversation
+   * that should be updated. */
+  google.protobuf.FieldMask update_mask = 3;
+
+  sinch.conversationapi.type.MetadataUpdateStrategy metadata_update_strategy = 4;
+}
+
+enum ConversationMessagesView {
+  WITH_METADATA = 0;
+  WITHOUT_METADATA = 1;
+}
+
+
+message ListConversationsRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  /* Optional. The ID of the app involved in the conversations.
+   * At least one of app_id and contact_id needs to be present. */
+  string app_id = 2;
+
+  /* Optional. The ID of the contact involved in the conversations.
+   * At least one of app_id and contact_id needs to be present. */
+  string contact_id = 3;
+
+  // Required. True if only active conversations should be listed.
+  bool only_active = 4;
+
+  /* Optional. The maximum number of conversations to fetch. Defaults to 10
+   * and the maximum is 20 */
+  int32 page_size = 5;
+
+  // Optional. Next page token previously returned if any.
+  string page_token = 6;
+
+  // Optional. Only fetch conversations from the `active_channel`.
+  sinch.conversationapi.type.ConversationChannel active_channel = 7;
+}
+
+message ListConversationsResponse {
+  // Output only. List of conversations matching the search query.
+  repeated sinch.conversationapi.type.Conversation conversations = 1;
+
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message ListRecentConversationsRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The application ID.
+  string app_id = 2;
+
+  // Optional. True if only active conversations should be listed.
+  // Defaults to false
+  bool only_active = 3;
+
+  // Optional. The maximum number of conversations to fetch.
+  // Defaults to 10 and the maximum value is 50.
+  int32 page_size = 4;
+
+  // Optional. Next page token previously returned if any.
+  string page_token = 5;
+
+  // Optional. Whether to sort conversations by newest message first or oldest.
+  // Default is DESC (newest first)
+  Order order = 6;
+
+  enum Order {
+    // Descending order. Newest first
+    DESC = 0;
+    // Ascending order. Oldest first.
+    ASC = 1;
+  }
+}
+
+message ListRecentConversationsResponse {
+  repeated ConversationRecentMessage conversations = 1;
+
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message ConversationRecentMessage {
+  sinch.conversationapi.type.Conversation conversation = 1;
+  sinch.conversationapi.type.ConversationMessage last_message = 2;
+}
+
+message ListMessagesRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  /* Optional. Resource name (id) of the conversation.
+   * - In case the messages source is set to `CONVERSATION_SOURCE`: One of conversation_id or contact_id needs to be present.
+   * - In case the messages source is set to `DISPATCH_SOURCE`: The field is unsupported and cannot be set. */
+  string conversation_id = 2;
+
+  /* Optional. Resource name (id) of the contact.
+   * - In case the messages source is set to `CONVERSATION_SOURCE`: One of conversation_id or contact_id needs to be present.
+   * - In case the messages source is set to `DISPATCH_SOURCE`: The field is unsupported and cannot be set. */
+  string contact_id = 3;
+
+  /* Optional. Resource name (id) of the app.
+   * - In case the messages source is set to `CONVERSATION_SOURCE`: The field is unsupported and cannot be set.
+   * - In case the messages source is set to `DISPATCH_SOURCE`: The field needs to be present and set. */
+  string app_id = 9;
+
+  /* Optional. Maximum number of messages to fetch. Defaults to 10
+   * and the maximum is 20 */
+  int32 page_size = 4;
+
+  // Optional. Next page token previously returned if any.
+  string page_token = 5;
+
+  /* Optional.
+   * Specifies the representation in which messages should be returned.
+   * Default to `WITH_METADATA`. */
+  ConversationMessagesView view = 6;
+
+  /* Optional.
+   * Specifies the message source for which the request will be processed.
+   * Default is `CONVERSATION_SOURCE`. */
+  sinch.conversationapi.type.MessagesSource messages_source = 7;
+
+  /* Optional. If true, fetch only recipient originated messages.
+   * Available only when `DISPATCH_SOURCE` messages are queried. */
+  bool only_recipient_originated = 8;
+
+  // Optional. Filter messages by `channel_identity`.
+  string channel_identity = 10;
+
+  // Optional. Only fetch messages with `accept_time` after this date.
+  google.protobuf.Timestamp start_time = 11;
+
+  // Optional. Only fetch messages with `accept_time` before this date.
+  google.protobuf.Timestamp end_time = 12;
+
+  // Optional. Only fetch messages from the `channel`.
+  sinch.conversationapi.type.ConversationChannel channel = 13;
+}
+
+message ListMessagesResponse {
+  // Output only. List of messages associated to the referenced conversation.
+  repeated sinch.conversationapi.type.ConversationMessage messages = 1;
+
+  string next_page_token = 2;
+}
+
+message InjectMessageRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Message to be injected. Id field of the message is ignored and instead generated on the server.
+  sinch.conversationapi.type.ConversationMessage message = 2;
+}
+
+message InjectEventRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Event to be injected. Id field of the event is ignored and instead generated on the server.
+  sinch.conversationapi.type.ConversationEvent event = 2;
+}
+
+message InjectEventResponse {
+  // Output only. Event id.
+  string event_id = 1;
+
+  // Output only. Accepted timestamp.
+  google.protobuf.Timestamp accepted_time = 2;
+}
+
+message StopActiveConversationRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the conversation to be stopped.
+  string conversation_id = 2;
+}
+
+message CreateConversationRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  /* Required. The conversation to create. ID will be generated for the conversation
+   * and any ID in the given conversation will be ignored. */
+  sinch.conversationapi.type.Conversation conversation = 2;
+}
+
+message DeleteConversationRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the conversation to be deleted.
+  string conversation_id = 2;
+}

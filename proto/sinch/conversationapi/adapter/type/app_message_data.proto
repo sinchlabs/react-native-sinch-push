@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package sinch.conversationapi.adapter.type;
+
+import "google/protobuf/timestamp.proto";
+import "sinch/conversationapi/type/conversation_message.proto";
+import "sinch/conversationapi/type/conversation_event.proto";
+import "sinch/conversationapi/type/conversation_notification.proto";
+import "sinch/conversationapi/type/authentication.proto";
+import "google/protobuf/struct.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Adapter.Type";
+option php_namespace = "Sinch\\ConversationApi\\Adapter\\Type";
+option java_package = "com.sinch.conversationapi.adapter.type";
+option java_multiple_files = true;
+option java_outer_classname = "AppMessageDataProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/adapter/type;v1beta";
+
+message AppMessageData {
+  // Optional. In the case of channels with multiple credential support and credential
+  // resolution on the adapter side, the first credential found in the app will be set.
+  sinch.conversationapi.type.ConversationChannelCredential channel_credential = 1;
+
+  // Optional. Channel credentials which will be send in case of channels with multiple credentials support
+  // and proper channel credentials resolution on adapter site.
+  repeated sinch.conversationapi.type.ConversationChannelCredential channel_credentials = 10;
+
+  // Channel identity of the recipient
+  string to = 2;
+
+  oneof message {
+    sinch.conversationapi.type.AppMessage app_message = 3;
+    sinch.conversationapi.type.AppEvent app_event = 4;
+    sinch.conversationapi.type.ConversationNotification conversation_notification = 6;
+  }
+
+  /* Optional. Channel-specific properties.
+   * The key in the map must point to a valid channel property key as
+   * defined by the enum ChannelPropertyKeys. */
+  map<string, string> channel_properties = 5;
+
+  /* Optional. A timestamp past which the message send request is considered
+   * expired. */
+  google.protobuf.Timestamp expire_at = 7;
+
+  // Optional. Metadata that is associated with the message.
+  string message_metadata = 8;
+
+  // Optional. Metadata that is associated with the conversation.
+  google.protobuf.Struct conversation_metadata = 9;
+}

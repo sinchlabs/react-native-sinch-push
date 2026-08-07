@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package sinch.conversationapi.adapter.v1beta;
+
+import "sinch/conversationapi/type/authentication.proto";
+import "sinch/conversationapi/type/recipient.proto";
+import "sinch/conversationapi/type/reason.proto";
+
+option csharp_namespace = "Sinch.Conversationapi.Adapter.V1Beta";
+option php_namespace = "Sinch\\Conversationapi\\Adapter\\V1beta";
+option java_package = "com.sinch.conversationapi.adapter.v1beta";
+option java_multiple_files = true;
+option java_outer_classname = "ChannelUserProfileProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/adapter/v1beta";
+
+/* Sends request to channel for user profile information,
+ * identified by a channel specific user id. */
+service ChannelUserProfile {
+  rpc GetUserProfileInfo (GetUserProfileRequest) returns (GetUserProfileResponse);
+}
+
+message GetUserProfileRequest {
+  // Required. Channel credential.
+  // In case of multiple credentials available on channel first credentials from list will be used.
+  sinch.conversationapi.type.ConversationChannelCredential channel_credential = 1;
+
+  // Channel identity for which to perform user profile fetch.
+  string channel_identity = 2;
+
+  //Field used to identify requests in the service's logs.
+  string request_id = 3;
+
+  string app_id = 4;
+
+  // Optional. Channel credential list.
+  // Set when channel is supporting multiple credentials.
+  repeated sinch.conversationapi.type.ConversationChannelCredential channel_credential_list = 5;
+}
+
+message GetUserProfileResponse{
+
+  string user_name = 1;
+
+  // Optional. A reason shall be present if the user profile check failed.
+  sinch.conversationapi.type.Reason reason = 2;
+}

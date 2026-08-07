@@ -1,0 +1,234 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation_channel.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "AuthenticationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Channel Credential
+ *
+ * Enables access to the underlying messaging channel.
+ */
+message ConversationChannelCredential {
+  // Required. The identifier of the messaging channel.
+  sinch.conversationapi.type.ConversationChannel channel = 1;
+
+  // Required. The channel credential enabling access to the underlying messaging channel.
+  oneof credential {
+    StaticBearerCredential static_bearer = 3;
+    StaticTokenCredential static_token = 4;
+
+    // MMS specific channel credentials.
+    MMSCredentials mms_credentials = 6;
+
+    // Telegram specific channel credentials.
+    TelegramCredentials telegram_credentials = 7;
+
+    // Instagram specific channel credentials.
+    InstagramCredentials instagram_credentials = 8;
+
+    // KakaoTalk specific channel credentials.
+    KakaoTalkCredentials kakaotalk_credentials = 9;
+
+    // Apple Business Chat specific channel credentials.
+    AppleBcCredentials applebc_credentials = 11;
+
+    // WeChat specific channel credentials.
+    WeChatCredentials wechat_credentials = 12;
+
+    // Line specific channel credentials.
+    LineCredentials line_credentials = 13;
+
+    // KakaoTalkChat (2-way communication) specific channel credentials.
+    KakaoTalkChatCredentials kakaotalkchat_credentials = 15;
+
+    SMSCredentials sms_credentials = 16;
+
+    LineEnterpriseCredentials line_enterprise_credentials = 17;
+  }
+
+  /* Optional. The secret used to verify the channel callbacks
+   * for channels which support callback verification.
+   * The callback verification is not needed for Sinch-managed
+   * channels because the callbacks are not leaving
+   * Sinch internal networks.
+   * Max length is 256 characters.
+   * Note: leaving channel_callback_secret empty for channels with
+   * callback verification will disable the verification. */
+  string callback_secret = 5;
+
+  /* Output only. The state of the channel credentials integration.
+   * When a channel is activated, the user is prompted for credentials that must
+   * be validated and in some cases exchanged by a long-lived token (Instagram).
+   */
+  ChannelIntegrationState state = 10;
+
+  /* Output only. Additional identifier set by the channel that represents an specific
+   * id used by the channel. */
+  string channel_known_id = 14;
+
+  /* Optional. Set only in case of channels with multiple credentials support.
+   * In case of channels without multiple credentials support value will be set 0.*/
+  uint32 credential_ordinal_number = 18;
+
+}
+
+/* Bearer Channel Credential
+ *
+ * It consists of claimed identity and a static token.
+ */
+message StaticBearerCredential {
+  // Required. Claimed identity.
+  string claimed_identity = 1;
+  // Required. Static bearer token.
+  string token = 2;
+}
+
+// Static Token Credential
+message StaticTokenCredential {
+  // Required. The static token.
+  string token = 1;
+}
+
+/* Basic Auth Credential
+ *
+ * It consists of a username and a password.
+ */
+message BasicAuthCredential {
+  // Required. Basic auth username.
+  string username = 1;
+  // Required. Basic auth password.
+  string password = 2;
+}
+
+// MMS channel credential
+message MMSCredentials {
+  // Required. The static token.
+  BasicAuthCredential basic_auth = 1;
+  // Required. MMS Account ID.
+  string account_id = 2;
+  // Required. MMS API Key.
+  string api_key = 3;
+  // Optional. Used when MMS_SENDER property not set
+  string default_sender = 4;
+}
+
+// Telegram channel credential
+message TelegramCredentials {
+  // Required. The static token.
+  string token = 1;
+}
+
+// Instagram channel credential
+message InstagramCredentials {
+  // Required. The static token.
+  string token = 1;
+  // Optional. Required if using the Sinch Facebook App.
+  string business_account_id = 2;
+}
+
+// KakaoTalk channel credential
+message KakaoTalkCredentials {
+  // Required. Kakaotalk Plus friend ID.
+  string kakaotalk_plus_friend_id = 1;
+  // Required. The KakaoTalk Sender Key.
+  string kakaotalk_sender_key = 2;
+}
+
+// Apple Business Chat channel credential
+message AppleBcCredentials {
+  // Required. The ID that identifies a Business Chat Account (BCA).
+  string business_chat_account_id = 1;
+  // Optional. Merchant ID, required if our client wants to use Apple Pay.
+  string merchant_id = 2;
+  // Optional. Certificate reference, required if our client wants to use Apple Pay.
+  string apple_pay_certificate_reference = 3;
+  // Optional. Certificate password, required if our client wants to use Apple Pay.
+  string apple_pay_certificate_password = 4;
+}
+
+/* State of the channel credentials integration.
+ * If there was an error, a description may be provided.
+ */
+message ChannelIntegrationState {
+  // Required. The integration status.
+  ChannelIntegrationStatus status = 1;
+  // Optional. Description in case the integration fails.
+  string description = 2;
+}
+
+// WeChat channel credential
+message WeChatCredentials {
+  // Required. App ID
+  string app_id = 1;
+  // Required. App Secret.
+  string app_secret = 2;
+  // Required. Token, used to validate signature header in MO.
+  string token = 3;
+  // Required. AES Key, used to decode encrypted MO content
+  string aes_key = 4;
+}
+
+// Line channel credential
+message LineCredentials {
+  // Required. The static access token.
+  string token = 1;
+  // Required. Channel Secret.
+  string secret = 2;
+  // Optional. When multiple Line credentials are defined one of credentials needs to be defined as default.
+  bool is_default = 3;
+}
+
+// KakaoTalkChat channel credential
+message KakaoTalkChatCredentials {
+  // Required. Kakaotalk Plus friend ID.
+  string kakaotalk_plus_friend_id = 1;
+  // Optional. InfoBank API KEY.
+  string api_key = 2;
+}
+
+message SMSCredentials {
+  // Required. Indicates particular Sms App Id inside SMPP Service
+  string sms_app_id = 1;
+}
+
+message LineEnterpriseCredentials {
+  bool is_default = 1;
+  oneof enterpriseCredentials {
+    LineCredentialsJapan line_japan = 2;
+    LineCredentialsThailand line_thailand = 3;
+  }
+}
+
+
+message LineCredentialsJapan {
+  // Required. The static access token.
+  string token = 1;
+  // Required. Channel Secret.
+  string secret = 2;
+}
+
+message LineCredentialsThailand {
+  // Required. The static access token.
+  string token = 1;
+  // Required. Channel Secret.
+  string secret = 2;
+}
+
+// Status of the channel credentials integration.
+enum ChannelIntegrationStatus {
+  // Pending - initial status when the channel has been activated in the front-end.
+  PENDING = 0;
+  /* Active - credentials have been successfully validated and exchanged for a long-lived token.
+   * This status is used by default for channels in which the credential can't be validated.
+   */
+  ACTIVE = 1;
+  // Failed - failed to validate credentials and acquire a long-lived token.
+  FAILING = 2;
+}

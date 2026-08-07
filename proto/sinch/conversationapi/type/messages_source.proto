@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "MessagesSourceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+enum MessagesSource {
+  /* The default messages source.
+   * It refers to messages that were sent in the default 'CONVERSATION' processing mode,
+   thanks to which the messages are associated with a specific conversation and a contact.*/
+  CONVERSATION_SOURCE = 0;
+
+  /* It refers to messages that were sent in the 'DISPATCH' processing mode.
+   * These types of messages are not associated with any conversation or contact.*/
+  DISPATCH_SOURCE = 1;
+}

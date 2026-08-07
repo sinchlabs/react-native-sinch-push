@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "IdentityTypeProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/**
+ * The type of identity used in a channel: MSISDN, channel-specific ID, email, ...
+ */
+enum IdentityType {
+    UNKNOWN_IDENTITY_TYPE = 0;
+    CHANNEL_SPECIFIC_ID = 1;
+    MSISDN = 2;
+    EMAIL = 3;
+}

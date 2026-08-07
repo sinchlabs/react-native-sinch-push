@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package sinch.conversationapi.payments.v1;
+
+import "google/api/annotations.proto";
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "sinch/conversationapi/type/conversation_event.proto";
+import "sinch/conversationapi/type/reason.proto";
+import "google/protobuf/struct.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Payments.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\Payments\\V1beta";
+option java_package = "com.sinch.conversationapi.payments.v1";
+option java_multiple_files = true;
+option java_outer_classname = "PaymentServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/payments/v1;payments";
+
+// The Payment API
+service Payments {
+  /* Sends a Payment Status Query
+   *
+   * Payment Request to check Payment Status.
+   */
+  rpc QueryPayment(QueryPaymentRequest) returns (QueryPaymentResponse) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/payments:query"
+      body: "*"
+    };
+  }
+}
+
+message QueryPaymentRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the app sending the payment.
+  string app_id = 2;
+
+  // Required. Specify which Conversation Channel is sending the Payment.
+  sinch.conversationapi.type.ConversationChannel channel = 3;
+
+  // Required. Object containing all payment properties
+  Payment payment = 4;
+}
+
+message Payment {
+  // Reference id related to the payment
+  string reference_id = 1;
+
+  // Struct containing all payment properties besides reference id
+  google.protobuf.Struct properties = 2;
+}
+
+message QueryPaymentResponse {
+  // List of payments responses for the given request
+  repeated PaymentResponse payments = 1;
+
+  // Adds reason in case of failure
+  sinch.conversationapi.type.Reason reason = 2;
+}
+
+message PaymentResponse {
+  // NEW, PENDING, CANCELED, CAPTURED, FAILED
+  sinch.conversationapi.type.PaymentStatus status = 1;
+
+  // Specify type of currency.
+  // Examples: "brl", "sgd"
+  string currency = 2;
+
+  // Total amount
+  PaymentAmount amount = 3;
+}
+
+message PaymentAmount {
+  // Positive integer representing the amount value
+  // multiplied by offset. For example, $12.34. has value 1234
+  int32 value = 1;
+
+  int32 offset = 2;
+
+  // Description of the amount
+  string description = 3;
+}

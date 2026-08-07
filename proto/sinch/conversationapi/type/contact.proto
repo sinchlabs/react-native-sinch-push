@@ -1,0 +1,142 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation_channel.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ContactProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Contact
+ *
+ * A participant in a conversation typically representing a person.
+ * It is associated with a collection of channel identities.
+ */
+message Contact {
+  // The ID of the contact.
+  string id = 1;
+
+  // List of channel identities.
+  repeated ChannelIdentity channel_identities = 2;
+  // List of channels defining the channel priority.
+  repeated sinch.conversationapi.type.ConversationChannel channel_priority = 3;
+
+  // Optional. The display name. A default 'Unknown' will be assigned if left empty
+  string display_name = 4;
+
+  // Optional. Email of the contact.
+  string email = 5;
+
+  // Optional. Contact identifier in an external system.
+  string external_id = 6;
+
+  /* Optional. Metadata associated with the contact.
+   * Up to 1024 characters long. */
+  string metadata = 7;
+
+  // 2 letter ISO 639 language code for the contact. Default value is UNSPECIFIED language.
+  ContactLanguage language = 8;
+}
+
+/* Channel Identity
+ *
+ * A unique identity of message recipient on a particular channel.
+ * For example, the channel identity on SMS, WHATSAPP or VIBERBM is a MSISDN phone number.
+ */
+message ChannelIdentity {
+  // Required. The channel.
+  sinch.conversationapi.type.ConversationChannel channel = 1;
+
+  // Required. The channel identity e.g., a phone number for SMS, WhatsApp and Viber Business.
+  string identity = 2;
+
+  /* Optional. The Conversation API's app ID if this is app-scoped channel identity.
+   * Currently, FB Messenger and Viber are using app-scoped channel identities
+   * which means contacts will have different channel identities for different
+   * apps. FB Messenger uses PSIDs (Page-Scoped IDs) as channel identities.
+   * The app_id is pointing to the app linked to the FB page for which this PSID is issued.
+   */
+  string app_id = 3;
+}
+
+enum ConversationMergeStrategy {
+  MERGE = 0; // merge messages of active conversations into one conversation
+}
+
+enum ContactLanguage {
+  UNSPECIFIED = 0;
+  AF = 1;
+  SQ = 2;
+  AR = 3;
+  AZ = 4;
+  BN = 5;
+  BG = 6;
+  CA = 7;
+  ZH = 8;
+  ZH_CN = 9;
+  ZH_HK = 10;
+  ZH_TW = 11;
+  HR = 12;
+  CS = 13;
+  DA = 14;
+  NL = 15;
+  EN = 16;
+  EN_GB = 17;
+  EN_US = 18;
+  ET = 19;
+  FIL = 20;
+  FI = 21;
+  FR = 22;
+  DE = 23;
+  EL = 24;
+  GU = 25;
+  HA = 26;
+  HE = 27;
+  HI = 28;
+  HU = 29;
+  ID = 30;
+  GA = 31;
+  IT = 32;
+  JA = 33;
+  KN = 34;
+  KK = 35;
+  KO = 36;
+  LO = 37;
+  LV = 38;
+  LT = 39;
+  MK = 40;
+  MS = 41;
+  ML = 42;
+  MR = 43;
+  NB = 44;
+  FA = 45;
+  PL = 46;
+  PT = 47;
+  PT_BR = 48;
+  PT_PT = 49;
+  PA = 50;
+  RO = 51;
+  RU = 52;
+  SR = 53;
+  SK = 54;
+  SL = 55;
+  ES = 56;
+  ES_AR = 57;
+  ES_ES = 58;
+  ES_MX = 59;
+  SW = 60;
+  SV = 61;
+  TA = 62;
+  TE = 63;
+  TH = 64;
+  TR = 65;
+  UK = 66;
+  UR = 67;
+  UZ = 68;
+  VI = 69;
+  ZU = 70;
+}

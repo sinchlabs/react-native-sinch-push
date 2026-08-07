@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "sinch/conversationapi/type/conversation_channel.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ConversationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Conversation
+ *
+ * A collection of messages exchanged between a contact and an app.
+ * Conversations are normally created on the fly by Conversation API once
+ * a message is sent and there is no active conversation already.
+ * There can be only one active conversation at any given time between
+ * a particular contact and an app.
+ */
+message Conversation {
+  // The ID of the conversation.
+  string id = 1;
+
+  // The ID of the participating app.
+  string app_id = 2;
+
+  // The ID of the participating contact.
+  string contact_id = 3;
+
+  /* Output only. The timestamp of the latest message in the conversation. The timestamp will be
+   * Thursday January 01, 1970 00:00:00 UTC if the conversation contains no messages. */
+  google.protobuf.Timestamp last_received = 4;
+
+  /* Output only. The channel last used for communication in the conversation. The value will be
+   * CHANNEL_UNSPECIFIED if the conversation does not contain messages. */
+  sinch.conversationapi.type.ConversationChannel active_channel = 5;
+
+  // Flag for whether this conversation is active.
+  bool active = 6;
+
+  /* An arbitrary data set by the Conversation API clients.
+   * Up to 1024 characters long. */
+  string metadata = 7 [deprecated=true];
+
+  /* An arbitrary data set by the Conversation API clients or SendMessage API client.
+   */
+  google.protobuf.Struct metadata_json = 8;
+
+  // Optional. Arbitrary correlation ID related to the MT message set by the
+  // Conversation API user.
+  string correlation_id = 9;
+}

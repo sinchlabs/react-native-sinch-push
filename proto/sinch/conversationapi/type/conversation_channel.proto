@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ConversationChannelProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Channel Identifier */
+enum ConversationChannel {
+  CHANNEL_UNSPECIFIED = 0;
+  WHATSAPP = 1;
+  RCS = 2;
+  SMS = 3;
+  MESSENGER = 4;
+  VIBER = 5;
+  VIBERBM = 6;
+  MMS = 7;
+  TELEGRAM = 8;
+  INSTAGRAM = 9;
+  KAKAOTALK = 10;
+  SINCH_CHAT = 11;
+  APPLEBC = 12;
+  WECHAT = 13;
+  LINE = 14;
+  KAKAOTALKCHAT = 15;
+  SINCH_PUSH = 16;
+}

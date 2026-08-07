@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+import "sinch/cnt/v1alpha1/content_types.proto";
+
+option java_package = "com.sinch.cnt.v1alpha1";
+
+option go_package = "sinch-sdk-send-service/pkg/gen/proto/sinch/cnt/v1alpha1";
+
+package sinch.cnt.v1alpha1;
+
+service ContentService {
+  rpc StoreFileFromUrl (StoreFileFromUrlRequest) returns (StoreFileFromUrlResponse);
+  rpc StoreMultipleFilesFromUrl (StoreMultipleFilesFromUrlRequest) returns (StoreMultipleFilesFromUrlResponse);
+  rpc StoreBinaryData(stream StoreBinaryDataRequest) returns (StoreBinaryDataResponse);
+  rpc GetOccupancyReport (GetOccupancyReportRequest) returns (GetOccupancyReportResponse);
+  rpc DeleteFile (DeleteFileRequest) returns (DeleteFileResponse);
+  rpc GetPreSignedUrl (GetPreSignedUrlRequest) returns (GetPreSignedUrlResponse);
+  rpc GetFile (GetFileRequest) returns (stream GetFileResponse);
+}

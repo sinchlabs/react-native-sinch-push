@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package sinch.conversationapi.adapter.v1beta;
+
+import "google/protobuf/timestamp.proto";
+import "sinch/conversationapi/adapter/type/app_message_data.proto";
+import "sinch/conversationapi/type/reason.proto";
+
+option csharp_namespace = "Sinch.Conversationapi.Adapter.V1Beta";
+option php_namespace = "Sinch\\Conversationapi\\Adapter\\V1beta";
+option java_package = "com.sinch.conversationapi.adapter.v1beta";
+option java_multiple_files = true;
+option java_outer_classname = "AppMessageServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/adapter/v1beta";
+
+/* Sends an app message originating from a conversation app to a contact,
+ * identified by a channel specific recipient id. */
+service AppMessage {
+  rpc SendAppMessage (SendAppMessageRequest) returns (SendAppMessageResponse);
+}
+
+// Request, containing the message to be sent.
+message SendAppMessageRequest {
+  // Required. The id of the Conversation App sending the message.
+  string app = 1;
+
+  // Required. The message_id assigned by the Conversation API core.
+  string message_id = 2;
+
+  // Required. The AppMessageData type contains the message to be sent.
+  sinch.conversationapi.adapter.type.AppMessageData app_message_data = 3;
+
+  // Required. The project_id for which that message belongs.
+  string project_id = 4;
+}
+
+message SendAppMessageResponse {
+  // Optional. Will be present if the transmission was successful.
+  string channel_message_id = 1;
+
+  // Optional. Will be present if the transmission was successful.
+  google.protobuf.Timestamp create_time = 2;
+
+  // Optional. A reason will be given if the adapter failed to send the message/event.
+  sinch.conversationapi.type.Reason reason = 6;
+
+  // Optional. Metadata about the MT message that can be added to CDRs.
+  map<string, string> metadata = 7;
+}

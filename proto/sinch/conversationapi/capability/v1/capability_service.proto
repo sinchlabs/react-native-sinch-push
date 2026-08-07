@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package sinch.conversationapi.capability.v1;
+
+import "google/api/annotations.proto";
+import "sinch/conversationapi/type/recipient.proto";
+import "sinch/conversationapi/type/reason.proto";
+import "sinch/conversationapi/type/capability_notification.proto";
+import "sinch/conversationapi/type/conversation_channel.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Capability.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\Capability\\V1beta";
+option java_package = "com.sinch.conversationapi.capability.v1";
+option java_multiple_files = true;
+option java_outer_classname = "CapabilityServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/capability/v1;capability";
+
+// The Capability API
+service Capability {
+
+  /* Request a capability lookup. The outcome will be reported asynchronously.
+   *
+   * This method is asynchronous - it returns immediately the
+   * requested Capability registration.
+   * Capability check are then delivered as callbacks
+   * to registered webhooks with trigger CAPABILITY for every reachable channel. */
+  rpc QueryCapability(QueryCapabilityRequest) returns (QueryCapabilityResponse) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/capability:query"
+      body: "*"
+    };
+  }
+
+  /* Request a capability lookup. The outcome will be reported synchronously.
+   *
+   * This method is synchronous - it returns immediately the
+   * requested Capability check.   */
+  rpc QueryCapabilitySync(QueryCapabilityRequest) returns (QueryCapabilitySyncResponse) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/capability:querySync"
+      body: "*"
+    };
+  }
+}
+
+message QueryCapabilityRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the app to use for capability lookup.
+  string app_id = 2;
+
+  // Required. The recipient to do the lookup for.
+  sinch.conversationapi.type.Recipient recipient = 3;
+
+  /*
+   * ID for the asynchronous request, will be generated if not set.
+   * Currently this field is not used for idempotency but it will be added in v1
+   */
+  string request_id = 4;
+}
+
+/* Represents an explicit Capability registration
+ *
+ * An CapabilityResponse contains the identity of the recipient for which
+ * will be perform a capability lookup.
+ */
+message QueryCapabilityResponse {
+
+  // Required. The ID of the app to use for capability lookup.
+  string app_id = 1;
+
+  // Required. The recipient for which a capability lookup was triggered for.
+  sinch.conversationapi.type.Recipient recipient = 2;
+
+  // ID for the asynchronous request, will be generated id if not set in request
+  string request_id = 3;
+}
+
+message CapabilityResponse {
+
+  // Required.
+  sinch.conversationapi.type.CapabilityStatus capability_status = 1;
+  // Optional. A reason shall be present if the capability check failed.
+  sinch.conversationapi.type.Reason reason = 2;
+  // Optional. A list of channel-specific capability identifiers.
+  repeated string channel_capabilities = 3;
+  //Optional. The channel.
+  sinch.conversationapi.type.ConversationChannel channel = 4;
+}
+
+message QueryCapabilitySyncResponse {
+
+  //Required
+  repeated CapabilityResponse capabilities = 1;
+}

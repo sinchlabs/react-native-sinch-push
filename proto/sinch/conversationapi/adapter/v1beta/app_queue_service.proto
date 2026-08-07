@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package sinch.conversationapi.adapter.v1beta;
+
+import "sinch/conversationapi/adapter/type/app_queue.proto";
+import "sinch/conversationapi/type/reason.proto";
+
+option csharp_namespace = "Sinch.Conversationapi.Adapter.V1Beta";
+option php_namespace = "Sinch\\Conversationapi\\Adapter\\V1beta";
+option java_package = "com.sinch.conversationapi.adapter.v1beta";
+option java_multiple_files = true;
+option java_outer_classname = "AppQueueServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/adapter/v1beta";
+
+/* Updates the App's queue to satisfy specific adapters capacity */
+service AppQueue {
+  rpc PatchAppQueue (PatchAppQueueRequest) returns (PatchAppQueueResponse);
+}
+
+message PatchAppQueueRequest {
+  // Required. The id of the Conversation App.
+  string app_id = 1;
+  // Required. The App queue properties to be updated.
+  sinch.conversationapi.adapter.type.AppQueue app_queue = 2;
+}
+
+message PatchAppQueueResponse {
+  // Optional. The id of the updated Conversation App in case of success.
+  string app_id = 1;
+  // Optional. The updated app queue in case of success.
+  sinch.conversationapi.adapter.type.AppQueue app_queue = 2;
+  // Optional. A reason will be given if the application failed to update the app.
+  sinch.conversationapi.type.Reason reason = 3;
+}

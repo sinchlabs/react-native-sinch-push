@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package sinch.conversationapi.events.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "sinch/conversationapi/type/conversation_event.proto";
+import "sinch/conversationapi/type/recipient.proto";
+import "sinch/conversationapi/type/message_queue.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Events.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\Events\\V1beta";
+option java_package = "com.sinch.conversationapi.events.v1";
+option java_multiple_files = true;
+option java_outer_classname = "EventServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/events/v1;events";
+
+// The Event API
+service Events {
+  /* Send an event
+   *
+   * Sends an event to the referenced contact from the referenced app.
+   * Note that this operation enqueues the event in a queues so a successful
+   * response only indicates that the event has been queued. */
+  rpc SendEvent(SendEventRequest) returns (SendEventResponse) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/events:send"
+      body: "*"
+    };
+  }
+
+  rpc GetEvent(GetEventRequest) returns (sinch.conversationapi.type.ConversationEvent) {
+    option(google.api.http) = {
+      get: "/v1/projects/{project_id}/events/{event_id}"
+    };
+  }
+
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {
+    option(google.api.http) = {
+      get: "/v1/projects/{project_id}/events"
+    };
+  }
+
+  rpc DeleteEvent(DeleteEventRequest) returns (google.protobuf.Empty) {
+    option(google.api.http) = {
+      delete: "/v1/projects/{project_id}/events/{event_id}"
+    };
+  }
+}
+
+message SendEventRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the app sending the event.
+  string app_id = 2;
+
+  /* Required. The recipient can be an existing contact or a channel identity
+   * When no contact for that project exists with the given channel identity
+   * a new contact is created automatically. */
+  sinch.conversationapi.type.Recipient recipient = 3;
+
+  // Required. The event to send.
+  sinch.conversationapi.type.AppEvent event = 4;
+
+  /* Optional. Overwrites the default callback url for delivery reports for this event
+   *The REST URL should be of the form: scheme://host[:port]/path
+   * where scheme is http or https.
+   * The gRPC URL should be of the form: dns://host[:port]
+   * (See: https://github.com/grpc/grpc/blob/master/doc/naming.md). */
+  string callback_url = 5;
+
+  /* Optional. Channel priority order that dictates on which channels the
+   * Conversation API should try to send the message on. The order provided
+   * here overrides any default. */
+  repeated sinch.conversationapi.type.ConversationChannel channel_priority_order = 6;
+
+  // Optional. Eventual metadata that should be associated to the event.
+  string event_metadata = 7;
+
+  /* Optional. Define what queue the message should be placed in.
+   * Note that most messages should be placed in the default QUEUE_NORMAL_PRIORITY.
+   * QUEUE_HIGH_PRIORITY should only be used for messages that needs to be processed ASAP.
+   * Note that rate limits still apply to both queues.
+   **/
+  sinch.conversationapi.type.MessageQueue queue = 8;
+}
+
+message SendEventResponse {
+  // Output only. Event id.
+  string event_id = 1;
+
+  // Output only. Accepted timestamp.
+  google.protobuf.Timestamp accepted_time = 2;
+}
+
+message ListEventsRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Optional. Resource name (id) of the conversation. One of conversation_id or contact_id needs to be present.
+  string conversation_id = 2;
+
+  // Optional. Resource name (id) of the contact. One of conversation_id or contact_id needs to be present.
+  string contact_id = 3;
+
+  /* Optional. Maximum number of messages to fetch. Defaults to 10
+   * and the maximum is 20 */
+  int32 page_size = 4;
+
+  // Optional. Next page token previously returned if any.
+  string page_token = 5;
+}
+
+message GetEventRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The event ID.
+  string event_id = 2;
+}
+
+message DeleteEventRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The event ID.
+  string event_id = 2;
+}
+
+message ListEventsResponse {
+  // Output only. List of messages associated to the referenced conversation.
+  repeated sinch.conversationapi.type.ConversationEvent events = 1;
+
+  string next_page_token = 2;
+}

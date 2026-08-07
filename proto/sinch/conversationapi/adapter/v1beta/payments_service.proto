@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package sinch.conversationapi.adapter.v1beta;
+
+import "sinch/conversationapi/type/reason.proto";
+import "sinch/conversationapi/type/authentication.proto";
+import "google/protobuf/struct.proto";
+
+option csharp_namespace = "Sinch.Conversationapi.Adapter.V1Beta";
+option php_namespace = "Sinch\\Conversationapi\\Adapter\\V1beta";
+option java_package = "com.sinch.conversationapi.adapter.v1beta";
+option java_multiple_files = true;
+option java_outer_classname = "PaymentsServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/adapter/v1beta";
+
+service ChannelPayment {
+    rpc QueryChannelPayment(QueryChannelPaymentRequest) returns (QueryChannelPaymentResponse);
+}
+
+message QueryChannelPaymentRequest {
+    string app = 1;
+    sinch.conversationapi.type.ConversationChannelCredential channel_credential = 2;
+    Payment payment = 3;
+}
+
+message Payment {
+    string reference_id = 1;
+    google.protobuf.Struct properties = 2;
+}
+
+message QueryChannelPaymentResponse {
+    repeated PaymentResponse payments = 1;
+    sinch.conversationapi.type.Reason reason = 2;
+}
+
+message PaymentResponse {
+    PaymentStatus status = 1;
+    string currency = 2;
+    PaymentAmount amount = 3;
+}
+
+enum PaymentStatus {
+    PAYMENT_STATUS_UNKNOWN = 0;
+    PAYMENT_STATUS_NEW = 1;
+    PAYMENT_STATUS_PENDING = 2;
+    PAYMENT_STATUS_CANCELED = 3;
+    PAYMENT_STATUS_CAPTURED = 4;
+    PAYMENT_STATUS_FAILED = 5;
+}
+
+message PaymentAmount {
+    int32 value = 1;
+    int32 offset = 2;
+    string description = 3;
+}

@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package sinch.conversationapi.app.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";
+import "sinch/conversationapi/type/app.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.App.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\App\\V1beta";
+option java_package = "com.sinch.conversationapi.app.v1";
+option java_multiple_files = true;
+option java_outer_classname = "AppServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/app/v1;app";
+
+// The App management API
+service App {
+    // Creates an app
+    rpc CreateApp(CreateAppRequest) returns (sinch.conversationapi.type.App) {
+        option(google.api.http) = {
+            post: "/v1/projects/{project_id}/apps"
+            body: "app"
+        };
+    }
+
+    // Update an app
+    rpc UpdateApp(UpdateAppRequest) returns (sinch.conversationapi.type.App) {
+        option(google.api.http) = {
+            patch: "/v1/projects/{project_id}/apps/{app.id}"
+            body: "app"
+        };
+    }
+
+    // Delete an app
+    rpc DeleteApp(DeleteAppRequest) returns (google.protobuf.Empty) {
+        option(google.api.http) = {
+            delete: "/v1/projects/{project_id}/apps/{app_id}"
+        };
+    }
+
+    // Get an app
+    rpc GetApp(GetAppRequest) returns (sinch.conversationapi.type.App) {
+        option(google.api.http) = {
+            get: "/v1/projects/{project_id}/apps/{app_id}"
+        };
+    }
+
+    // List all apps for a given project
+    rpc ListApps(ListAppsRequest) returns (ListAppsResponse) {
+        option(google.api.http) = {
+            get: "/v1/projects/{project_id}/apps"
+        };
+    }
+}
+
+message CreateAppRequest {
+    // Required. The project ID.
+    string project_id = 1;
+
+    // Required. The app to create.
+    sinch.conversationapi.type.App app = 2;
+}
+
+message GetAppRequest {
+    // Required. The project ID.
+    string project_id = 1;
+
+    // Required. The ID of the app to fetch.
+    string app_id = 2;
+}
+
+message UpdateAppRequest {
+    // Required. The project ID.
+    string project_id = 1;
+
+    // Required. The updated app.
+    sinch.conversationapi.type.App app = 2;
+    google.protobuf.FieldMask update_mask = 3;
+}
+
+message DeleteAppRequest {
+    // Required. The project ID.
+    string project_id = 1;
+
+    // Required. The ID of the app.
+    string app_id = 2;
+}
+
+message ListAppsRequest {
+    // Required. The project ID.
+    string project_id = 1;
+}
+
+message ListAppsResponse {
+  // List of apps belonging to a specific project ID.
+  repeated sinch.conversationapi.type.App apps = 1;
+}

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ChannelSessionProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+message ChannelSession {
+  // Required. Session ID.
+  string session_id = 1;
+  // Optional. Additional session metadata which may indicate different pricing for given session.
+  map<string, string> metadata = 2;
+}

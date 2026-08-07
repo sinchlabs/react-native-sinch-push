@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation_stop_notification.proto";
+import "sinch/conversationapi/type/conversation_start_notification.proto";
+import "sinch/conversationapi/type/conversation_delete_notification.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ConversationNotificationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+message ConversationNotification {
+  oneof notification {
+    sinch.conversationapi.type.ConversationStartNotification conversation_start_notification = 1;
+    sinch.conversationapi.type.ConversationStopNotification conversation_stop_notification = 2;
+    sinch.conversationapi.type.ConversationDeleteNotification conversation_delete_notification = 3;
+  }
+}

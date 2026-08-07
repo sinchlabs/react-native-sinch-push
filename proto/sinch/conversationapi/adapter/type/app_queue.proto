@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package sinch.conversationapi.adapter.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Adapter.Type";
+option php_namespace = "Sinch\\ConversationApi\\Adapter\\Type";
+option java_package = "com.sinch.conversationapi.adapter.type";
+option java_multiple_files = true;
+option java_outer_classname = "AppQueueProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/adapter/type;v1beta";
+
+message AppQueue {
+  // Optional. The TPS for the Core -> Adapter transactions.
+  int32 mt_tps = 1;
+  // Optional. The TPS for the Core -> Adapter Retry transactions.
+  int32 mt_retry_tps = 2;
+  // Optional. The TPS for the Adapter -> Core transactions.
+  int32 mo_tps = 3;
+  // Optional. The TPS for the Adapter -> Core Retry transactions.
+  int32 mo_retry_tps = 4;
+  // Optional. The TPS for the callbacks sent to  the webhooks registered for the app.
+  int32 callback_tps = 5;
+  // Optional. The maximum size allowed for the MT Queue
+  int32 max_mt_queue_length = 6;
+  // Optional. The maximum size allowed for the MO Queue
+  int32 max_mo_queue_length = 7;
+  // Optional. The TPS for the MO callbacks sent to the webhooks registered for the app.
+  int32 callback_mo_tps = 8;
+}

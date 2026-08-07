@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "google/protobuf/struct.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "SmartConversationNotificationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+message SmartConversationNotification {
+    // Optional. The identifier of the contact who received the message. Will not be present for messages sent in Dispatch Mode.
+    string contact_id = 1;
+
+    // Required. The channel identity of the recipient.
+    string channel_identity = 2;
+
+    // Required. The channel from which the message was received.
+    sinch.conversationapi.type.ConversationChannel channel = 3;
+
+    // Required. The ID of the analyzed message.
+    string message_id = 4;
+
+    // Optional. The ID of the conversation. Will not be present for messages sent in Dispatch Mode.
+    string conversation_id = 5;
+
+    // Required. ML analysis result
+    google.protobuf.Struct analysis_results = 6;
+}
+
+
+

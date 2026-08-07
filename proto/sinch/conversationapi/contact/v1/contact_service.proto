@@ -1,0 +1,190 @@
+syntax = "proto3";
+
+package sinch.conversationapi.contact.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";
+import "sinch/conversationapi/type/contact.proto";
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "sinch/conversationapi/type/recipient.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Contact.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\Contact\\V1beta";
+option java_package = "com.sinch.conversationapi.contact.v1";
+option java_multiple_files = true;
+option java_outer_classname = "ContactServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/contact/v1;contact";
+
+// The Contact API
+service Contact {
+
+  // Create a Contact
+  rpc CreateContact(CreateContactRequest) returns (sinch.conversationapi.type.Contact) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/contacts"
+      body: "contact"
+    };
+  }
+
+  // Get a Contact
+  rpc GetContact(GetContactRequest) returns (sinch.conversationapi.type.Contact) {
+    option(google.api.http) = {
+      get: "/v1/projects/{project_id}/contacts/{contact_id}"
+    };
+  }
+
+  // Delete a Contact
+  rpc DeleteContact(DeleteContactRequest) returns (google.protobuf.Empty) {
+    option(google.api.http) = {
+      delete: "/v1/projects/{project_id}/contacts/{contact_id}"
+    };
+  }
+
+  // Update a Contact
+  rpc UpdateContact(UpdateContactRequest) returns (sinch.conversationapi.type.Contact) {
+    option(google.api.http) = {
+      patch: "/v1/projects/{project_id}/contacts/{contact.id}"
+      body: "contact"
+    };
+  }
+
+  // Get contacts
+  rpc ListContacts(ListContactsRequest) returns (ListContactsResponse) {
+    option(google.api.http) = {
+      get: "/v1/projects/{project_id}/contacts"
+    };
+  };
+
+  /* Merge two contacts
+   *
+   * The remaining contact will contain all conversations that the removed
+   * contact did. If both contacts had conversations within the same App,
+   * messages from the removed contact will be merged into corresponding active
+   * conversations in the destination contact. Channel
+   * identities will be moved from the source contact to the destination contact
+   * only for channels that weren't present there before. Moved channel
+   * identities will be placed at the bottom of the channel priority list.
+   * Optional fields from the source contact will be copied only if
+   * corresponding fields in the destination contact are empty The contact being
+   * removed cannot be referenced after this call. */
+  rpc MergeContact(MergeContactRequest) returns (sinch.conversationapi.type.Contact) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/contacts/{destination_id}:merge"
+      body: "*"
+    };
+  }
+
+  /* Get channel contact profile
+   *
+   * Get user profile from specific channel using contact channel identity.
+   * Supported only on MESSENGER channel. */
+  rpc GetContactChannelProfile(ChannelProfileRequest) returns (ChannelProfileResponse) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/contacts:getChannelProfile"
+      body: "*"
+    };
+  }
+}
+
+message ChannelProfileRequest {
+
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the app from which channelCredentials will be fetched.
+  string app_id = 2;
+
+  // Required. Contact identity send as contact_id or specific channel identity.
+  sinch.conversationapi.type.Recipient recipient = 3;
+
+  // Required. The channel from which user profile will be fetched.
+  sinch.conversationapi.type.ConversationChannel channel = 4;
+}
+
+message ChannelProfileResponse {
+
+  // Profile name on specific channel.
+  string profile_name = 1;
+}
+
+
+message CreateContactRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The contact to be added.
+  sinch.conversationapi.type.Contact contact = 2;
+}
+
+message GetContactRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the contact.
+  string contact_id = 2;
+}
+
+message UpdateContactRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The updated contact.
+  sinch.conversationapi.type.Contact contact = 2;
+
+  /* Required. Field mask indicating what parts of the contact that should
+   * be updated. */
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message DeleteContactRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the contact to be deleted.
+  string contact_id = 2;
+}
+
+message MergeContactRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the contact that should be removed.
+  string source_id = 2;
+
+  // Required. The ID of the contact that should be kept.
+  string destination_id = 3;
+
+  // Optional. Merge conversation strategy for future usage
+  sinch.conversationapi.type.ConversationMergeStrategy strategy = 4;
+}
+
+message ListContactsRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  /* Optional. The maximum number of contacts to fetch. The default is 10
+   * and the maximum is 20 */
+  int32 page_size = 2;
+
+  // Optional. Next page token previously returned if any.
+  string page_token = 3;
+
+  // Optional. Contact identifier in an external system. If used, `channel` and `identity` parameters can't be used.
+  string external_id = 4;
+
+  // Optional. The channel. If used, then `identity` parameter must be set and `external_id` can't be used.
+  sinch.conversationapi.type.ConversationChannel channel = 5;
+
+  // Optional. The channel identity e.g., a phone number for SMS, WhatsApp and Viber Business. If used, the `channel` parameter must be set and `external_id` can't be used.
+  string identity = 6;
+}
+
+message ListContactsResponse {
+  // List of contacts belonging to the specified project.
+  repeated sinch.conversationapi.type.Contact contacts = 1;
+
+  /* Token that should be included in the next list contacts request to
+   * fetch the next page. */
+  string next_page_token = 2;
+}

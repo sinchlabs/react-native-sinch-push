@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/contact.proto";
+import "sinch/conversationapi/type/conversation_message.proto";
+import "sinch/conversationapi/type/processing_mode.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "MessageSubmitNotificationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Message Submit Notification
+ *
+ * A message submit notification for messages sent from an app. */
+message MessageSubmitNotification {
+  // Required. The ID of the message.
+  string message_id = 1;
+
+  // Optional. The conversation ID this message belongs to. Will not be present for messages sent in Dispatch Mode.
+  string conversation_id = 2;
+
+  // Required. The channel and contact channel identity of the message.
+  sinch.conversationapi.type.ChannelIdentity channel_identity = 3;
+
+  // Optional. The ID of the contact. Will not be present for messages sent in Dispatch Mode.
+  string contact_id = 4;
+
+  // Required. The AppMessage submitted in the request.
+  sinch.conversationapi.type.AppMessage submitted_message = 5;
+
+  /* Optional. Eventual metadata specified when sending the message.
+   * Up to 1024 characters long. */
+  string metadata = 6;
+
+  // Required. The processing mode of the original message.
+  sinch.conversationapi.type.ProcessingMode processing_mode = 7;
+}

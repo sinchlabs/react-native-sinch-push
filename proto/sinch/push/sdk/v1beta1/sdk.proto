@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package sinch.push.sdk.v1beta1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "sinch-sdk-send-service/pkg/gen/proto/sinch/push/sdk/v1beta1";
+
+/*
+Providing unified public interface for Sinch Push SDK.
+Facade service.
+Exposes public interface.
+Public access controlled by CSSP Platform.
+ */
+service SdkService {
+  /*
+  Subscribing to push notifications.
+   */
+  rpc Subscribe (SubscribeRequest) returns (google.protobuf.Empty) {}
+
+  /*
+  Unsubscribing from push notifications.
+   */
+  rpc Unsubscribe (UnsubscribeRequest) returns (google.protobuf.Empty) {}
+
+  /*
+  Get public key (for web push).
+   */
+  rpc GetPublicKey (GetPublicKeyRequest) returns (GetPublicKeyResponse) {}
+}
+
+message SubscribeRequest {
+  string config = 1;
+  string token = 2;
+}
+
+message UnsubscribeRequest {
+  string config = 1;
+  string token = 2;
+}
+
+message GetPublicKeyRequest {
+  string config = 1;
+}
+
+message GetPublicKeyResponse {
+  string public_key = 1;
+}

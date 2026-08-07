@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package sinch.chat.sdk.v1alpha2;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "sinch-sdk-send-service/pkg/gen/proto/sinch/chat/sdk/v1alpha2";
+option java_package = "com.sinch.chat.sdk.v1alpha2";
+
+service ServiceMeshService {
+  rpc SendMessageToDestination (SendMessageToPodRequest) returns (google.protobuf.Empty) {}
+
+  rpc Election(ElectionRequest) returns (ElectionResponse);
+  rpc Ping(PingRequest) returns (PingResponse) {}
+  rpc GetPingResult(google.protobuf.Empty) returns (GetPingResultResponse) {}
+
+  rpc UpdateDestination(UpdateDestinationRequest) returns (UpdateDestinationResponse);
+}
+
+message ElectionRequest {
+  string ip_address = 1;
+  oneof request {
+    bool leader_election = 2;
+    bool leader_elected = 3;
+  }
+}
+
+message ElectionResponse {
+  oneof result {
+    bool success = 1;
+  }
+}
+
+message UpdateDestinationRequest {
+  string ip_address = 1;
+
+  message Full {
+    map<string, bool> destinations = 1;
+  }
+  message Partial {
+      // sum of all destinations after modification
+      uint32 sum_destinations = 1;
+      repeated string add_destinations = 2;
+      repeated string remove_destinations = 3;
+  }
+
+  oneof update {
+      Full full = 2;
+      Partial partial = 3;
+  }
+
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message UpdateDestinationResponse {
+  enum Status {
+    STATUS_OK = 0;
+    STATUS_NEED_SYNC = 1;
+    STATUS_ERROR = 2;
+  }
+  enum Error {
+    ERROR_NONE = 0;
+  }
+  Status status = 1;
+  optional Error error = 2;
+}
+
+message SendMessageToPodRequest {
+  string destination = 1;
+  bytes message = 2;
+}
+
+message SendMessageToDestinationResponse {
+  enum Status {
+    STATUS_OK = 0;
+    // Then we need to full sync destination in specific pod.
+    STATUS_NOT_FOUND = 1;
+  }
+  Status status = 1;
+}
+
+message PingRequest {
+  string ip_address = 1;
+}
+
+message PingResponse {
+  bool is_leader = 1;
+}
+
+message GetPingResultResponse {
+  repeated string alive_ips = 1;
+  optional string leader_ip = 2;
+}

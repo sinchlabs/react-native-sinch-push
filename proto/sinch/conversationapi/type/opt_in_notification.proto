@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "sinch/conversationapi/type/processing_mode.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "OptInNotificationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+
+message OptInNotification {
+  // Optional. The contact for the channel identities. Will not be present for messages sent in Dispatch Mode.
+  string contact_id = 1;
+  // Required. The channel of the opt-in.
+  sinch.conversationapi.type.ConversationChannel channel = 2;
+  // Required. The channel identity e.g., a phone number for SMS, WhatsApp and Viber Business.
+  string identity = 3;
+  // Required. Status of the opt-in registration.
+  OptInStatus status = 4;
+  // Optional. It is set in case of errors.
+  OptInErrorDetails error_details = 5;
+  // Output only. ID generated when submitting the opt in request.
+  string request_id = 6;
+  // Required. The processing mode.
+  sinch.conversationapi.type.ProcessingMode processing_mode = 7;
+}
+
+enum OptInStatus {
+  OPT_IN_STATUS_UNSPECIFIED = 0;
+  OPT_IN_SUCCEEDED = 1;
+  OPT_IN_FAILED = 2;
+}
+
+message OptInErrorDetails {
+  // Human-readable error description.
+  string description = 1;
+}

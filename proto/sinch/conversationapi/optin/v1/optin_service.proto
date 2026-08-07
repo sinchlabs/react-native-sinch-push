@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package sinch.conversationapi.optin.v1;
+
+import "google/api/annotations.proto";
+import "sinch/conversationapi/type/opt_in.proto";
+import "sinch/conversationapi/type/opt_out.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Optin.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\Optin\\V1beta";
+option java_package = "com.sinch.conversationapi.optin.v1";
+option java_multiple_files = true;
+option java_outer_classname = "OptInServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/optin/v1;optin";
+
+// The Opt-In / Opt-Out API
+//
+// As of December 2022, this unsupported and only kept to maintain backwards
+// compatibility. The public endpoints in conv-public-api are kept but return
+// static responses.
+service OptIn {
+
+  /* Register an opt-in
+   *
+   * This method is asynchronous - it returns immediately the
+   * requested OptIn registration with any defaults resolved.
+   * All changes of the actual opt-in status are then delivered as callbacks
+   * to registered webhooks with trigger OPT_IN. */
+  rpc RegisterOptIn(OptInRequest) returns (OptInResponse) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/optins:register"
+      body: "opt_in"
+    };
+  }
+
+  /* Register an opt-out
+   *
+   * This method is asynchronous - it returns immediately the
+   * requested OptOut registration with any defaults resolved.
+   * All changes of the actual opt-out status are then delivered as callbacks
+   * to registered webhooks with trigger OPT_OUT. */
+  rpc RegisterOptOut(OptOutRequest) returns (OptOutResponse) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/optouts:register"
+      body: "opt_out"
+    };
+  }
+}
+
+message OptInRequest {
+  // Required. The project ID.
+  string project_id = 1;
+  sinch.conversationapi.type.OptIn opt_in = 2;
+  /*
+   * ID for the asynchronous request, will be generated if not set.
+   * Currently this field is not used for idempotency but it will be added in v1
+   */
+  string request_id = 3;
+}
+
+message OptInResponse {
+  sinch.conversationapi.type.OptIn opt_in = 1;
+  // ID for the asynchronous request, will be generated id if not set in request
+  string request_id = 2;
+}
+
+message OptOutRequest {
+  // Required. The project ID.
+  string project_id = 1;
+  sinch.conversationapi.type.OptOut opt_out = 2;
+  /*
+   * ID for the asynchronous request, will be generated if not set.
+   * Currently this field is not used for idempotency but it will be added in v1
+   */
+  string request_id = 3;
+}
+
+message OptOutResponse {
+  sinch.conversationapi.type.OptOut opt_out = 1;
+  // ID for the asynchronous request, will be generated id if not set in request
+  string request_id = 2;
+}

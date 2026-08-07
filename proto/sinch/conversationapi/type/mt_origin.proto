@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "MtOriginProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+enum MtOrigin {
+  /* MT originated from a direct message request on Conversation API */
+  DIRECT_MESSAGE = 0;
+  /* MT originated from a direct batch request on Batch API */
+  DIRECT_BATCH = 1;
+  /* MT originated from a scheduled batch request on Batch API */
+  SCHEDULED_BATCH = 2;
+}

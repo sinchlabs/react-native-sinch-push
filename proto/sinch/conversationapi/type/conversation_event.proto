@@ -1,0 +1,210 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/contact.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "sinch/conversationapi/type/conversation_message.proto";
+import "sinch/conversationapi/type/agent.proto";
+import "sinch/conversationapi/type/processing_mode.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ConversationEventProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Conversation Event
+ *
+ * An event on a particular channel.
+ */
+message ConversationEvent {
+  /* The direction defines what is the source and
+   * what is the destination of the event. */
+  sinch.conversationapi.type.ConversationDirection direction = 1;
+
+  // The content of the event.
+  oneof event {
+    AppEvent app_event = 2;
+    ContactEvent contact_event = 3;
+    ContactMessageEvent contact_message_event = 10;
+  }
+  // Required. The ID of the event.
+  string id = 8;
+
+  // Optional. The ID of the event's conversation. Will not be present for apps in Dispatch Mode.
+  string conversation_id = 9;
+
+  // Optional. The ID of the contact. Will not be present for apps in Dispatch Mode.
+  string contact_id = 4;
+
+  // Required. The channel and contact channel identity of the event.
+  sinch.conversationapi.type.ChannelIdentity channel_identity = 5;
+
+  // Output only.
+  google.protobuf.Timestamp accept_time = 6;
+
+  // Required. The processing mode.
+  sinch.conversationapi.type.ProcessingMode processing_mode = 7;
+}
+
+// Message originating from an app
+message AppEvent {
+  oneof event {
+    ComposingEvent composing_event = 1;
+    ComposingEndEvent composing_end_event = 2;
+    CommentReplyEvent comment_reply_event = 3;
+    AgentJoinedEvent agent_joined_event = 4;
+    AgentLeftEvent agent_left_event = 5;
+    GenericEvent generic_event = 6;
+  }
+}
+
+// Message originating from a contact
+message ContactEvent {
+  oneof event {
+    ComposingEvent composing_event = 1;
+    ComposingEndEvent composing_end_event = 2;
+    ConversationDeletedEvent conversation_deleted_event = 3;
+    CommentEvent comment_event = 4;
+    GenericEvent generic_event = 5;
+  }
+}
+
+// The user or the app started to type a message
+message ComposingEvent {
+  // Required.
+}
+
+// The user or the app cleared the message they were entering
+message ComposingEndEvent {
+  // Required.
+}
+
+// The user deleted the conversation and won't receive more messages until an MO message
+message ConversationDeletedEvent {
+  // Required.
+}
+
+// The user sent a comment outside of the main conversation context
+message CommentEvent {
+  // Optional. An identifier for the comment.
+  string id = 1;
+
+  // Required. The text of the comment.
+  string text = 2;
+
+  // Optional. The type of the comment.
+  string comment_type = 3;
+
+  // Optional. The origin of the comment
+  string commented_on = 4;
+
+  // Optional. The user that triggered the comment event
+  string user = 5;
+}
+
+// The app replies to a comment sent by the user
+message CommentReplyEvent {
+  // Required. The text of the comment reply.
+  string text = 1;
+}
+
+// Notification about agent/sender joining to the conversation
+message AgentJoinedEvent {
+  sinch.conversationapi.type.Agent agent = 1;
+}
+
+// Notification about agent/sender leaving the conversation
+message AgentLeftEvent {
+  sinch.conversationapi.type.Agent agent = 2;
+}
+
+// Generic event with flexible structure
+message GenericEvent {
+  google.protobuf.Struct payload = 1;
+}
+
+message ContactMessageEvent {
+  oneof event {
+    PaymentStatusUpdateEvent payment_status_update_event = 1;
+    ShortlinkActivatedEvent shortlink_activated_event = 2;
+    ReactionEvent reaction_event = 3;
+  }
+}
+
+message ShortlinkActivatedEvent {
+  // Optional.
+  string payload = 1;
+  // Optional. Relevant only for Instagram channel
+  string title = 2;
+  // Required. ref parameter from shortlink user visited
+  string ref = 3;
+  // Optional. For this event currently defaults to "SHORTLINK"
+  string source = 4;
+  // Optional. For this event currently defaults to "OPEN_THREAD"
+  string type = 5;
+  // Required. true if target channel's conversation thread already exists on the moment of shortlink visit, false - new thread just Started
+  bool existing_thread = 6;
+}
+
+// Message specific only for Payments feature to reflect current state of particular Payment Flow
+message PaymentStatusUpdateEvent {
+  // This is the partner supplied ID to identify the order for payments
+  string reference_id = 1;
+  // Status reflecting how payment flow goes
+  PaymentStatus payment_status = 2;
+  // Status reflecting payment transaction status changes
+  PaymentTransactionStatus payment_transaction_status = 3;
+  // Unique id of the transaction for which one of the transaction payment_transaction_status is present in event
+  string payment_transaction_id = 4;
+}
+
+message ReactionEvent {
+  // Optional. For action indicating placed reaction represents string representation of an emoji
+  string emoji = 1;
+  // Required. Type of action
+  ReactionAction action = 2;
+  // Required. The Id of the message that this is a reaction to
+  string message_id = 3;
+  // Optional. If present represents grouping of emojis
+  optional string reaction_category = 4;
+}
+
+enum ReactionAction {
+  // Treat it as null or not present field.
+  REACTION_ACTION_UNKNOWN = 0;
+  // User placed some emoji reaction
+  REACTION_ACTION_REACT = 1;
+  // User removed previously placed emoji reaction
+  REACTION_ACTION_UNREACT = 2;
+}
+
+// Status reflecting how payment flow goes
+enum PaymentStatus {
+  // The status value was not set. Treat it as null or not present field.
+  PAYMENT_STATUS_UNKNOWN = 0;
+  // The partner sent an order_details message but the user didn’t start a payment yet
+  PAYMENT_STATUS_NEW = 1;
+  // The user started the payment process and the payment object was created
+  PAYMENT_STATUS_PENDING = 2;
+  // The payment was captured
+  PAYMENT_STATUS_CAPTURED = 3;
+  // The payment was canceled by the user and no retry is possible
+  PAYMENT_STATUS_CANCELED = 4;
+  // The payment attempt failed but the user can retry
+  PAYMENT_STATUS_FAILED = 5;
+}
+
+// Group of statuses of the user-initiated transaction changes
+enum PaymentTransactionStatus {
+  // The transaction status value was not set. Treat it as null or not present field.
+  PAYMENT_STATUS_TRANSACTION_UNKNOWN = 0;
+  // The transaction started
+  PAYMENT_STATUS_TRANSACTION_PENDING = 1;
+  PAYMENT_STATUS_TRANSACTION_FAILED = 2;
+  PAYMENT_STATUS_TRANSACTION_SUCCESS = 3;
+  PAYMENT_STATUS_TRANSACTION_CANCELED = 4;
+}

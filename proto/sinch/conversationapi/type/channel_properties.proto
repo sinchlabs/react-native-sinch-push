@@ -1,0 +1,129 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ChannelPropertiesProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Possible keys for the channel_properties map
+ * The entries have the following format: <conversation channel>_<property name>. */
+enum ChannelPropertyKeys {
+    PROPERTY_KEY_UNDEFINED = 0;
+
+    /* Messenger messaging type.
+     * For more information visit:
+     * https://developers.facebook.com/docs/messenger-platform/send-messages/#messaging_types
+     * Defaults to MESSAGE_TAG if MESSENGER_MESSAGE_TAG is set. */
+    MESSENGER_MESSAGING_TYPE = 1;
+
+    /* Messenger message tag. Enables sending specific updates
+     * to users outside the standard messaging window.
+     * For more information including a list of possible values visit:
+     * https://developers.facebook.com/docs/messenger-platform/send-messages/message-tags
+     * There is no default value for this property. */
+    MESSENGER_MESSAGE_TAG = 2;
+
+    /* Messenger push notification type.
+     * Possible values are REGULAR (sound/vibration),
+     * SILENT_PUSH (on-screen notification only) and
+     * NO_PUSH (no notification).
+     * The default is REGULAR. */
+    MESSENGER_NOTIFICATION_TYPE = 3;
+
+    /* Viber Bot sender’s name to display.
+     * Max 28 characters. */
+    VIBER_SENDER_NAME = 4;
+
+    /* Viber Bot sender’s avatar URL.
+     * Avatar size should be no more than 100 kb.
+     * Recommended 720x720. */
+    VIBER_SENDER_AVATAR = 5;
+
+    /* Whether this is flash SMS message.
+     * Flash SMS messages are shown on screen without user interaction
+     * while not saving the message to the inbox.
+     * Possible values are true and false.
+     * The default is false. */
+    SMS_FLASH_MESSAGE = 6;
+
+    /* MMS sender longnumber or shortcode */
+    MMS_SENDER = 7;
+
+    /* To enable/disable link preview in Telegram message.
+     * Possible values: true and false.
+     * This property does not have default value.
+     */
+    TELEGRAM_DISABLE_LINK_PREVIEW = 8;
+
+    /* SMS sender/originator. Optional on SMS channel.
+     * If not populated the default originator associated
+     * to your Sinch SMS account will be used. */
+    SMS_SENDER = 9;
+
+    /* Instagram message tag.
+     * Enables sending messages outside of the standard messaging window.
+     * Possible values: HUMAN_AGENT (the message was sent by a human agent)
+     * There is no default value for this property. */
+    INSTAGRAM_MESSAGE_TAG = 10;
+
+    /* Whether to enforce strict media validation for MMS. Setting this
+     * to true will ensure that the media renders in the best possible
+     * way on different operators and devices. Media non conformant to
+     * best practices will result in media message being rejected. The
+     * default value is false. Validation follows the guidelines from
+     * https://developers.sinch.com/docs/mms-bestpractices */
+    MMS_STRICT_VALIDATION = 11;
+
+    /* KakaoTalk flag for Alimtalk authentication template messages.
+     * These messages are sent with higher priority and have shorter delivery time.
+     * Pre-requisite: the interpolated template message should contain one of the
+     * following words: auth, password, verif, にんしょう, 認証, 비밀번호, 인증
+     * Possible values: true or false. Default is false. */
+    KAKAOTALK_AUTHENTICATION = 12;
+
+    /* If LINE video message comes with a trackingId parameter, the video viewing
+     * complete event occurs when the user finishes watching the video
+     * Possible values: Half-width alphanumeric string
+     * Max character limit: 100 chars
+     * This property does not have default value.*/
+    LINE_VIDEO_TRACKING_ID = 13;
+
+    /* SMS max number of message parts. If text message must be delivered as multiple SMS messages
+    (because text length exceed single SMS message limit) this property defines how many parts
+    maximum the Customer allows. */
+    SMS_MAX_NUMBER_OF_MESSAGE_PARTS = 14;
+
+    /* Defines if message should be checked for required split before sending. */
+    SPLIT_ENABLED = 15;
+
+    /* Defines if Apple Business Messages message should be encoded as RSA type */
+    APPLEBC_RSA_ENABLED = 16;
+
+    /* Messenger notification messages token. Allows to send notification messages for users that opted in */
+    MESSENGER_NOTIFICATION_MESSAGES_TOKEN = 17;
+
+    /**
+    The user interaction data is aggregated in units defined with this property.
+    During the current month (from the 1st to the last day of the month), one can send messages with up to 1000 different unit names.
+    Note that when messages are sent with the 1001st or later unit name type, those unit names are treated as if they weren't assigned to the messages.
+     */
+    LINE_OPEN_STATUS = 18;
+
+    /* Defines which of available Line channels should be used during send out.
+     * Available channels: NATIVE, JAPAN, THAILAND, TAIWAN, INDONESIA. */
+    LINE_CHANNEL = 19;
+
+    /* Defines if Apple Business Messages message should be marked as notification message */
+    APPLEBC_NOTIFICATION_MESSAGE = 20;
+
+    /* Defines the devices to which a template message should be sent
+     * Possible values: PRIMARY_ONLY, ALL */
+    VIBERBM_TEMPLATE_MESSAGE_DEVICES = 21;
+
+    /* Defines if preview URL should be enabled in WhatsApp message */
+    WHATSAPP_PREVIEW_URL = 22;
+}

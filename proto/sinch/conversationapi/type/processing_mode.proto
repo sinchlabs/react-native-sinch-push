@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ProcessingModeProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+enum ProcessingMode {
+  /* The default processing mode.
+   * Creates Contacts automatically when a message is sent or received and there's no existing contact.
+   * Creates Conversations automatically when a message is sent or received and there's no active conversation. */
+  CONVERSATION = 0;
+
+  /* Does not associate messages with Contacts and Conversations.
+   * This processing mode is mostly intended for unidirectional high volume SMS use cases.
+   * The lack of Contacts and Conversations limits some API features as related data won't be
+   * sent in the callbacks and won't be queryable in the `/contacts` and `/conversations` APIs.
+   */
+  DISPATCH = 1;
+}

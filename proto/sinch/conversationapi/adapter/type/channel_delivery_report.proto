@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package sinch.conversationapi.adapter.type;
+
+import "sinch/conversationapi/type/status.proto";
+import "sinch/conversationapi/type/reason.proto";
+import "sinch/conversationapi/type/channel_session.proto";
+
+option csharp_namespace = "Sinch.Conversationapi.Adapter.Type";
+option php_namespace = "Sinch\\Conversationapi\\Adapter\\Type";
+option java_package = "com.sinch.conversationapi.adapter.type";
+option java_multiple_files = true;
+option java_outer_classname = "ChannelDeliveryReportProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/adapter/type;v1beta";
+
+message ChannelDeliveryReport {
+    // Required. A status will always be present.
+    sinch.conversationapi.type.Status delivery_status = 1;
+
+    // Optional. A reason shall be present if the status is FAILED.
+    sinch.conversationapi.type.Reason reason = 6;
+
+    // Optional. For channels which has support for sessions (session based pricing)
+    sinch.conversationapi.type.ChannelSession channel_session = 7;
+
+    // Optional. Metadata about the MT message that can be added to CDRs.
+    map<string, string> metadata = 8;
+}

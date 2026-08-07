@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/status.proto";
+import "sinch/conversationapi/type/reason.proto";
+import "sinch/conversationapi/type/contact.proto";
+import "sinch/conversationapi/type/processing_mode.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "EventDeliveryReportProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Event Delivery Report
+ *
+ * A delivery receipt for event sent from an app. */
+message EventDeliveryReport {
+  // Required. The ID of the event.
+  string event_id = 1;
+
+  // Required. The delivery status.
+  sinch.conversationapi.type.Status status = 2;
+
+  // Required. The channel and contact channel identity of the event.
+  sinch.conversationapi.type.ChannelIdentity channel_identity = 3;
+
+  // Optional. The ID of the contact. Will not be present for apps in Dispatch Mode.
+  string contact_id = 4;
+
+  // Optional. A reason will be present if the status is FAILED or SWITCHING_CHANNEL.
+  sinch.conversationapi.type.Reason reason = 5;
+
+  // Optional. Eventual metadata specified when sending the message.
+  string metadata = 6;
+
+  // Required. The processing mode.
+  sinch.conversationapi.type.ProcessingMode processing_mode = 7;
+}
+

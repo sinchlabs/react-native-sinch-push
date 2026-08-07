@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package sinch.conversationapi.adapter.v1beta;
+
+import "sinch/conversationapi/adapter/type/app_message_data.proto";
+import "sinch/conversationapi/type/reason.proto";
+import "sinch/conversationapi/type/conversation_message.proto";
+
+option csharp_namespace = "Sinch.Conversationapi.Adapter.V1Beta";
+option php_namespace = "Sinch\\Conversationapi\\Adapter\\V1beta";
+option java_package = "com.sinch.conversationapi.adapter.v1beta";
+option java_multiple_files = true;
+option java_outer_classname = "ChannelSplittingServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/adapter/v1beta";
+
+// Defines service to get the segments of a generic message
+service ChannelSplitting {
+  rpc SplitChannelMessage (SplitChannelMessageRequest) returns (SplitChannelMessageResponse);
+}
+
+message SplitChannelMessageRequest {
+  // Required. The AppMessageDataType contains the message to be split.
+  sinch.conversationapi.adapter.type.AppMessageData app_message_data = 1;
+}
+
+message SplitChannelMessageResponse {
+  // Optional. The segments array if the splitting was successful.
+  repeated MessageSegmentData message_segment_data = 1;
+
+  // Optional. A reason shall be present if the splitting failed.
+  sinch.conversationapi.type.Reason reason = 2;
+}
+
+message MessageSegmentData {
+  // Required. Segment Part Number
+  int32 segment_part_number = 1;
+
+  // Required. One of Conv-API message type
+  sinch.conversationapi.type.AppMessage app_message = 2;
+}

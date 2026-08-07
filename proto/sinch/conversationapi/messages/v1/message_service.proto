@@ -1,0 +1,199 @@
+syntax = "proto3";
+
+package sinch.conversationapi.messages.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "sinch/conversationapi/type/conversation_message.proto";
+import "sinch/conversationapi/type/processing_strategy.proto";
+import "sinch/conversationapi/type/recipient.proto";
+import "sinch/conversationapi/type/message_queue.proto";
+import "sinch/conversationapi/type/messages_source.proto";
+import "sinch/conversationapi/type/metadata_update_strategy.proto";
+import "sinch/conversationapi/type/message_content_type.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Messages.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\Messages\\V1beta";
+option java_package = "com.sinch.conversationapi.messages.v1";
+option java_multiple_files = true;
+option java_outer_classname = "MessageServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/messages/v1;messages";
+
+// The Message API
+service Messages {
+  /*  Send a message
+   *
+   * Sends a message to the referenced contact from the referenced app.
+   * Note that this operation enqueues the message in a queues so a successful
+   * response only indicates that the message has been queued.
+   * The message is added to the active conversation with the contact if such conversation exists.
+   * If no active conversation exists a new one is started automatically. */
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse) {
+    option(google.api.http) = {
+      post: "/v1/projects/{project_id}/messages:send"
+      body: "*"
+    };
+  }
+
+  /* Get a message
+   *
+   * Retrieves a message by id. */
+  rpc GetMessage(GetMessageRequest) returns (sinch.conversationapi.type.ConversationMessage) {
+    option(google.api.http) = {
+      get: "/v1/projects/{project_id}/messages/{message_id}"
+    };
+  }
+
+  /* Deletes a message
+   *
+   * Deletes a message that is part of a conversation.
+   * Removing the last message of a conversation will not delete the conversation. */
+  rpc DeleteMessage (DeleteMessageRequest) returns (google.protobuf.Empty) {
+    option(google.api.http) = {
+      delete: "/v1/projects/{project_id}/messages/{message_id}"
+    };
+  }
+
+  // Update a message
+  rpc UpdateMessage(UpdateMessageRequest) returns (sinch.conversationapi.type.ConversationMessage) {
+    option(google.api.http) = {
+      patch: "/v1/projects/{project_id}/messages/{message.id}"
+      body: "message"
+    };
+  }
+}
+
+message SendMessageRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the app sending the message.
+  string app_id = 2;
+
+  /* Required. The recipient can be an existing contact or a list of channel identities.
+   * When no contact for the specified project exists with the given channel identities
+   * a new contact is created automatically. */
+  sinch.conversationapi.type.Recipient recipient = 3;
+
+  // Required. The message to send.
+  sinch.conversationapi.type.AppMessage message = 4;
+
+  /* Optional. Overwrites the default callback url for delivery reports for this message
+   * The REST URL should be of the form: scheme://host[:port]/path
+   * where scheme is http or https.
+   * The gRPC URL should be of the form: dns://host[:port]
+   * (See: https://github.com/grpc/grpc/blob/master/doc/naming.md). */
+  string callback_url = 5;
+
+  /* Optional. Explicitly define the channels and order in which they are tried when sending the message.
+   * Note that collection can't contain 'CHANNEL_UNSPECIFIED' value.
+   * Which channels the API will try and their priority is defined by:
+   * 1. channel_priority_order if available.
+   * 2. recipient.identified_by.channel_identities if available.
+   * 3. When recipient is a contact_id:
+   *   - if a conversation with the contact exists: the active channel of the conversation is tried first.
+   *   - the existing channels for the contact are ordered by contact channel preferences if given.
+   *   - lastly the existing channels for the contact are ordered by the app priority.
+   **/
+  repeated sinch.conversationapi.type.ConversationChannel channel_priority_order = 6;
+
+  /* Optional. Eventual metadata that should be associated to the message.
+   * The provided metadata will also be added to the contact metadata if a new one is created.
+   **/
+  string message_metadata = 7;
+
+  /* Optional. Define what queue the message should be placed in.
+   * Note that most messages should be placed in the default NORMAL_PRIORITY.
+   * QUEUE_HIGH_PRIORITY should only be used for messages that needs to start processing ASAP.
+   * Note that rate limits still apply to both queues.
+   **/
+  sinch.conversationapi.type.MessageQueue queue = 8;
+
+  /* Optional. Duration for trying to send the message.
+   * Passed onto for channels which have support for it and
+   * emulated by Conversation API for channels without ttl support
+   * but message retract/unsend functionality.
+   * Channel failover will not be performed for messages with
+   * expired TTL. */
+  google.protobuf.Duration ttl = 9;
+
+  /* Optional. Channel-specific properties.
+   * The key in the map must point to a valid channel property key as
+   * defined by the enum ChannelPropertyKeys.
+   * The maximum allowed property value length is 1024 characters. */
+  map<string, string> channel_properties = 10;
+
+  /* Optional.
+   * Provides the ability to change default processing message strategy. */
+  sinch.conversationapi.type.ProcessingStrategy processing_strategy = 11;
+
+  /* Optional. Eventual metadata that should be associated with the conversation.
+   * The provided metadata to the conversation when a conversation is created and update if needed
+   * The metadata must be a JsonObject
+   **/
+  google.protobuf.Struct conversation_metadata = 12;
+
+  /* Optional. A client-provided correlation ID used to track the message
+   * across the message sending flow. */
+  string correlation_id = 13;
+
+  sinch.conversationapi.type.MetadataUpdateStrategy conversation_metadata_update_strategy = 14;
+
+  /* Optional. A content type provided by the client to classify message content type.
+   * For opt-out purposes.
+   **/
+  sinch.conversationapi.type.MessageContentType message_content_type = 15;
+}
+
+message SendMessageResponse {
+  // Output only. Message id.
+  string message_id = 1;
+
+  /* Output only. Timestamp corresponding to when the Conversation API
+   * accepted the message for delivery to the referenced contact. */
+  google.protobuf.Timestamp accepted_time = 2;
+}
+
+message GetMessageRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The conversation message ID.
+  string message_id = 2;
+
+  /* Optional.
+   * Specifies the message source for which the request will be processed.
+   * Default is `CONVERSATION_SOURCE`. */
+  sinch.conversationapi.type.MessagesSource messages_source = 3;
+}
+
+message DeleteMessageRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the message to be deleted.
+  string message_id = 2;
+
+  /* Optional.
+   * Specifies the message source for which the request will be processed.
+   * Default is `CONVERSATION_SOURCE`. */
+  sinch.conversationapi.type.MessagesSource messages_source = 3;
+}
+
+message UpdateMessageRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The (partial) message update.
+  sinch.conversationapi.type.ConversationMessage message = 2;
+
+  /* Required. Field mask indicating what parts of the message that should
+ * be updated. */
+  google.protobuf.FieldMask update_mask = 3;
+}
+

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/contact.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ContactMergeNotificationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+message ContactMergeNotification {
+    // Required. The preserved contact.
+    sinch.conversationapi.type.Contact preserved_contact = 1;
+    // Required. The deleted contact.
+    sinch.conversationapi.type.Contact deleted_contact = 2;
+}

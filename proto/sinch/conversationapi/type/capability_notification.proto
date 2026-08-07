@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "sinch/conversationapi/type/reason.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "CapabilityNotificationProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+//Represents an explicit Capability result for specific channel.
+message CapabilityNotification {
+  // Optional. The contact for the channel identities.
+  string contact_id = 1;
+  // Optional. The channel identity e.g., a phone number for SMS, WhatsApp and Viber Business.
+  string identity = 2;
+  // Optional. The channel for which the capability lookup was done towards.
+  sinch.conversationapi.type.ConversationChannel channel = 3;
+  // Required. Status indicating the recipient's capability on the channel.
+  CapabilityStatus capability_status = 4;
+  // Optional. A reason shall be present if the capability check failed.
+  sinch.conversationapi.type.Reason reason = 5;
+  // Optional. List of channel-specific capabilities reported by the channel.
+  repeated string channel_capabilities = 6;
+  // Output only. ID generated when submitting the capability request.
+  string request_id = 7;
+}
+
+enum CapabilityStatus {
+  // The channel capability for the identity is unknown.
+  CAPABILITY_UNKNOWN = 0;
+  // The specified identity supports all the features of the channel.
+  CAPABILITY_FULL = 1;
+  // The specified identity supports a subset of the channel features.
+  CAPABILITY_PARTIAL = 2;
+  // The specified identity has no capability on the channel.
+  NO_CAPABILITY = 3;
+}

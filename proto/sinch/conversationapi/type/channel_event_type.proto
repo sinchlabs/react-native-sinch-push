@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ChannelEventTypeProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+enum ChannelEventType {
+  TYPE_UNSPECIFIED = 0;
+  WHATS_APP_QUALITY_RATING_CHANGED = 1;
+  WHATS_APP_DAILY_LIMIT_CHANGED = 2;
+  WHATS_APP_PRODUCT_NOT_DELIVERED_WARNING = 3;
+  WHATS_APP_TEMPLATE_STATUS_UPDATED = 4;
+  MESSENGER_ECHO_MESSAGE = 5;
+}

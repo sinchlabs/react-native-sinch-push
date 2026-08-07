@@ -1,0 +1,215 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/authentication.proto";
+import "sinch/conversationapi/type/processing_mode.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "AppProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Conversation API app
+ *
+ * The app corresponds to the API user and is a collection of channel credentials
+ * allowing access to the underlying messaging channels.
+ * The app is tied to a set of webhooks which define the destination for various events coming from the Conversation API.
+ */
+message App {
+  // Required. The ID of the app.
+  string id = 1;
+
+  /* Channel credentials.
+   * The order of the credentials defines the
+   * app channel priority. */
+  repeated sinch.conversationapi.type.ConversationChannelCredential channel_credentials = 2;
+
+  /* Optional. A flag specifying whether to return conversation metadata as
+   * part of each callback. If omitted `NONE` will be used. */
+  ConversationMetadataReportView conversation_metadata_report_view = 3;
+
+  // Required. Human readable identifier of the app. E.g. Sinch Conversation API Demo App 001.
+  string display_name = 4;
+
+  // Output only. Rate limits associated with the app. Contact your account manager to change these.
+  RateLimits rate_limits = 5;
+
+  // Optional. Defines the retention policy for messages and conversations.
+  RetentionPolicy retention_policy = 6;
+
+  /* Optional.
+   * Defines the retention policy for messages in `DISPATCH` mode.
+   * For `DISPATCH` mode, only `MESSAGE_EXPIRE_POLICY` is available and the available range for the `ttl_days` field is from 0 to 7. */
+  RetentionPolicy dispatch_retention_policy = 7;
+
+  /* Optional.
+   * Contacts and Conversations will not be stored in database if the mode is set to `DISPATCH`.
+   * Default `processing_mode` is `CONVERSATION`, which creates Contacts and Conversations when a
+   * message is sent or received. */
+  ProcessingMode processing_mode = 8;
+
+  // Optional. Smart conversation configuration for app.
+  SmartConversation smart_conversation = 9;
+
+  // Output only. Current size and limit of the app queues.
+  QueueStats queue_stats = 10;
+
+  //Optional. Message status persistence configuration.
+  PersistMessageStatus persist_message_status = 11;
+
+  //Optional. Message search configuration.
+  MessageSearch message_search = 12;
+
+  //Optional. Additional callback configuration.
+  CallbackSettings callback_settings = 13;
+
+  //Optional. Fallback upon no positive delivery report configuration.
+  DeliveryReportBasedFallback delivery_report_based_fallback = 14;
+
+  //Optional. Message retry time configuration.
+  MessageRetrySettings message_retry_settings = 15;
+
+  //Optional. Consent Manager configuration.
+  ConsentManagerSettings consent_manager_settings = 16;
+}
+
+
+message MessageRetrySettings {
+  /* Optional. The maximum duration, in seconds, for which to retry sending a message
+   * in case of a temporary processing failure. Time is counted after the first
+   * message processing failure. At least one retry is guaranteed.
+   * Subsequent retry times are randomized with exponential backoff. If the next retry
+   * timestamp exceeds the configured time, one last retry will be performed
+   * on the cut-off time.
+   * If the message has a  configured fallback channel, a switch_on_channel will be triggered.
+   * The valid values for this field are [30 - 3600].
+   * Default value is 3600 (seconds - 1 hour).
+   * Note: If message queue is not drained constantly retried message could be processed with delay
+   * which could have impact on number of retries.
+   */
+  uint32 retry_duration = 1;
+}
+
+message DeliveryReportBasedFallback {
+  /* Optional. A flag specifying whether this app has enabled fallback upon no positive delivery report feature.
+   * Disabled by default.
+   * Note: This feature is applicable only to messages which are sent to a recipient with more than one channel identity.
+   * Identities must be defined on channels which support at least 'DELIVERED' message state.
+   */
+  bool enabled = 1;
+
+  /* Optional. The time, in seconds, after which a message without a positive delivery report will fallback to the next channel.
+   * The valid values for this field are [60 - 259200].*/
+  uint32 delivery_report_waiting_time = 2;
+}
+
+
+enum ConversationMetadataReportView {
+  NONE = 0; // Omit metadata
+  FULL = 1; // Include all metadata assigned to the conversation
+}
+
+message RateLimits {
+  /* Output only. The number of messages/events we process per second, from the
+   * app to the underlying channels. Note that underlying channels may have other
+   * rate limits.  The default rate limit is 25.*/
+  uint32 outbound = 1;
+  /* Output only. The number of inbound messages/events we process per second,
+   * from underlying channels to the app.  The default rate limit is 25.*/
+  uint32 inbound = 2;
+  /* Output only. The rate limit of callbacks sent to the webhooks registered
+   * for the app. Note that if you have multiple webhooks with shared triggers,
+   * multiple callbacks will be sent out for each triggering event. The default rate limit is 25.*/
+  uint32 webhooks = 3;
+}
+
+enum RetentionPolicyType {
+  /* The default retention policy where messages older than
+   * `ttl_days` are automatically deleted from Conversation API database. */
+  MESSAGE_EXPIRE_POLICY = 0;
+
+  /* The conversation expire policy only considers the last message in a conversation.
+   * If the last message is older that `ttl_days` the entire conversation is deleted.
+   * The difference with `MESSAGE_EXPIRE_POLICY` is that messages with `accept_time`
+   * older than `ttl_days` are persisted as long as there is a newer message in the
+   * same conversation. */
+  CONVERSATION_EXPIRE_POLICY = 1;
+
+  /* Persist policy does not delete old messages or conversations.
+   * Please note that message storage might be subject to additional charges
+   * in the future. */
+  PERSIST_RETENTION_POLICY = 2;
+
+}
+
+// Retention policy for messages and conversations
+message RetentionPolicy {
+  /* Optional. Whether or not old messages or conversations are automatically deleted. */
+  RetentionPolicyType retention_type = 1;
+
+  /* Optional. The days before a message or conversation is eligible for deletion.
+   * Default value is 180. The `ttl_days` value has no effect when `retention_type`
+   * is `PERSIST_RETENTION_POLICY`. The valid values for this field are [1 - 3650].
+   * Note that retention cleanup job runs once every twenty-four hours
+   * which can lead to delay i.e., messages and conversations are not deleted on
+   * the minute they become eligible for deletion. */
+  uint32 ttl_days = 2;
+}
+
+// Smart conversation configuration for app.
+message SmartConversation {
+  /* Optional. A flag specifying whether this app has subscribed to Smart conversation services */
+  bool enabled = 1;
+}
+
+message QueueStats {
+  uint32 outbound_size = 1;
+  uint32 outbound_limit = 2;
+}
+
+message PersistFailedMessages {
+  /* Optional. A flag specifying whether failed messages for this app should be persisted */
+  bool enabled = 1;
+}
+
+message PersistMessageStatus {
+  /* Optional. A flag specifying whether message status for this app should be persisted */
+  bool enabled = 1;
+}
+
+// Message search configuration.
+message MessageSearch {
+  /* Optional. A flag specifying whether this app has enabled Message Search services */
+  bool enabled = 1;
+}
+
+// Additional callback configuration.
+message CallbackSettings {
+  /* Optional. Secret can be used to sign contents of delivery receipts for a message that was sent with the default "callback_url" overridden.
+   * You can then use the secret to verify the signature. */
+  string secret_for_overridden_callback_urls = 1;
+}
+
+message ConsentManagerSettings {
+  // removed opt_out_check_enabled simple boolean isn't enough
+  reserved 1;
+  ConsentManagerMode mode = 2;
+}
+
+enum ConsentManagerMode {
+  /* The default Consent manager mode.
+   * Do not process MO messages to check for possible Opt In and Opt Out,
+   * do not check if user is not Opt Out list before sending. */
+  DISABLED = 0;
+
+  /* Process MO messages to check for possible Opt In and Opt Out,
+   * check if user is not on Opt Out list before sending. */
+  PRIMARY = 1;
+
+  /* Process MO messages to check for possible Opt In and Opt Out,
+   * do not check if user is not Opt Out list before sending. */
+  SECONDARY = 2;
+}

@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation_channel.proto";
+import "sinch/conversationapi/type/channel_event_type.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ChannelEventProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+message ChannelEvent {
+  // Required. The channel.
+  sinch.conversationapi.type.ConversationChannel channel = 1;
+
+  // Required. The type of the event.
+  sinch.conversationapi.type.ChannelEventType event_type = 2;
+
+  // Optional. The description of the channel event.
+  string description = 3;
+
+  // Optional. Additional information for the given event.
+  map<string, string> additional_data = 4;
+}

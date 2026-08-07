@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package sinch.conversationapi.webhooks.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "sinch/conversationapi/type/webhook.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Webhooks.V1Beta";
+option php_namespace = "Sinch\\ConversationApi\\Webhooks\\V1beta";
+option java_package = "com.sinch.conversationapi.webhooks.v1";
+option java_multiple_files = true;
+option java_outer_classname = "WebhooksServiceProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/webhooks/v1;webhooks";
+
+// The Webhook API
+service Webhooks {
+  /* Create a new webhook
+   *
+   * Creates a webhook for receiving callbacks on specific triggers.
+   * You can create up to 20 webhooks per app. */
+  rpc CreateWebhook(CreateWebhookRequest) returns (sinch.conversationapi.type.Webhook) {
+    option(google.api.http) = {
+        post: "/v1/projects/{project_id}/webhooks"
+        body: "webhook"
+    };
+  }
+
+  // Update an existing webhook
+  rpc UpdateWebhook(UpdateWebhookRequest) returns (sinch.conversationapi.type.Webhook) {
+    option(google.api.http) = {
+        patch: "/v1/projects/{project_id}/webhooks/{webhook.id}"
+        body: "webhook"
+    };
+  }
+
+  // Delete an existing webhook
+  rpc DeleteWebhook(DeleteWebhookRequest) returns (google.protobuf.Empty) {
+      option(google.api.http) = {
+          delete: "/v1/projects/{project_id}/webhooks/{webhook_id}"
+      };
+  }
+
+  // Get a webhook
+  rpc GetWebhook(GetWebhookRequest) returns (sinch.conversationapi.type.Webhook) {
+      option(google.api.http) = {
+          get: "/v1/projects/{project_id}/webhooks/{webhook_id}"
+      };
+  }
+
+  // List all webhooks for a given app
+  rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse) {
+      option(google.api.http) = {
+          get: "/v1/projects/{project_id}/apps/{app_id}/webhooks"
+      };
+  }
+}
+
+message CreateWebhookRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The Webhook to create
+  sinch.conversationapi.type.Webhook webhook = 2;
+}
+
+message UpdateWebhookRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The Webhook to update
+  sinch.conversationapi.type.Webhook webhook = 2;
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message DeleteWebhookRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the webhook to delete.
+  string webhook_id = 2;
+}
+
+message GetWebhookRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the webhook to fetch.
+  string webhook_id = 2;
+}
+
+message ListWebhooksRequest {
+  // Required. The project ID.
+  string project_id = 1;
+
+  // Required. The ID of the App to list webhooks for.
+  string app_id = 2;
+}
+
+message ListWebhooksResponse {
+  // List of webhooks belonging to a specific project ID and app ID
+  repeated sinch.conversationapi.type.Webhook webhooks = 1;
+}

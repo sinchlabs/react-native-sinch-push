@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/conversation_channel.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "RecipientProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+// Recipient
+message Recipient {
+  oneof recipient {
+    // The ID of the receiving contact.
+    string contact_id = 1;
+    // The recipient identity on given channels.
+    ChannelIdentities identified_by = 2;
+  }
+}
+
+message ChannelIdentities {
+  /* A list of specific channel identities.
+   * The API will use these identities when sending to specific channels. */
+  repeated ChannelRecipientIdentity channel_identities = 1;
+}
+
+message ChannelRecipientIdentity {
+  // Required. The channel.
+  sinch.conversationapi.type.ConversationChannel channel = 1;
+
+  // Required. The channel recipient identity.
+  string identity = 2;
+}

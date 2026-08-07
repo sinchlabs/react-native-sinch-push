@@ -1,0 +1,601 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+import "sinch/conversationapi/type/contact.proto";
+import "google/protobuf/timestamp.proto";
+import "sinch/conversationapi/type/coordinates.proto";
+import "sinch/conversationapi/type/reason.proto";
+import "sinch/conversationapi/type/agent.proto";
+import "sinch/conversationapi/type/processing_mode.proto";
+import "sinch/conversationapi/type/message_status.proto";
+import "google/protobuf/struct.proto";
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "ConversationMessageProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Conversation Message
+ *
+ * A message on a particular channel.
+ */
+message ConversationMessage {
+  // Required. The ID of the message.
+  string id = 1;
+
+  /* The direction defines what is the source and
+   * what is the destination of the message. */
+  ConversationDirection direction = 2;
+
+  // The content of the message.
+  oneof message {
+    AppMessage app_message = 3;
+    ContactMessage contact_message = 4;
+  }
+
+  // Required. The channel and contact channel identity of the message.
+  sinch.conversationapi.type.ChannelIdentity channel_identity = 5;
+
+  // Optional. The ID of the conversation. Will not be present for messages sent in Dispatch Mode.
+  string conversation_id = 6;
+
+  // Optional. The ID of the contact. Will not be present for messages sent in Dispatch Mode.
+  string contact_id = 7;
+
+  /* Optional. Metadata associated with the contact.
+   * Up to 1024 characters long. */
+  string metadata = 8;
+
+  // Output only.
+  google.protobuf.Timestamp accept_time = 9;
+
+  // Optional. For Contact Messages the sender ID that the contact
+  // sent the message to. For App Messages the sender that was
+  // used to send the message, if applicable.
+  string sender_id = 10;
+
+  // Output only. The processing mode.
+  sinch.conversationapi.type.ProcessingMode processing_mode = 11;
+
+  // Output only. Flag if the message was injected
+  bool injected = 12;
+
+  // Required. The status of the message, eventTime of the status and reason if status is failed
+  sinch.conversationapi.type.MessageStatus message_status = 13;
+}
+
+enum ConversationDirection {
+  UNDEFINED_DIRECTION = 0;
+  TO_APP = 1;
+  TO_CONTACT = 2;
+}
+
+enum CardHeight {
+  UNSPECIFIED_HEIGHT = 0;
+  SHORT = 1;
+  MEDIUM = 2;
+  TALL = 3;
+}
+
+// Message originating from an app
+message AppMessage {
+  /* Optional. Channel specific messages, overriding any transcoding.
+   * The key in the map must point to a valid conversation channel as
+   * defined by the enum ConversationChannel. */
+  map<string, string> explicit_channel_message = 1;
+
+  /* The content of the message.
+   * One of TextMessage, MediaMessage,
+   * TemplateMessage, ChoiceMessage,
+   * CardMessage, CarouselMessage, 
+   * LocationMessage, ContactInfoMessage
+   * or ListMessage. */
+  oneof message {
+    /* ! All modifications to this list should most probably also be applied
+     * ! to the OmniMessageOverride type below */
+
+    // A message containing only text.
+    TextMessage text_message = 2;
+    // A message containing media such as images, GIFs, and video.
+    MediaMessage media_message = 3;
+    /* A message with predefined template.
+     * Requires an existing template. */
+    TemplateMessage template_message = 4;
+    /* A message containing a "choice"/"action" and description.
+     * A choice message is transcoded as a button in Messenger and RCS
+     * and as a bullet point in SMS and WhatsApp. */
+    ChoiceMessage choice_message = 5;
+    /* A rich message which consists of text and description with image or video.
+     * It can also contain a set of "choices" ("actions"). */
+    CardMessage card_message = 6;
+    /* A list of cards rendered horizontally on supported channels (Messenger and RCS)
+     * and as a numbered list on SMS and WhatsApp. */
+    CarouselMessage carousel_message = 7;
+    // A message defining a physical location on a map.
+    LocationMessage location_message = 8;
+    // A message containing contact information. 
+    ContactInfoMessage contact_info_message = 9;
+    /* A message containing multiple sections which can have items such as choices
+    * and products. */
+    ListMessage list_message = 11;
+  }
+
+  // Optional identity of an sender
+  sinch.conversationapi.type.Agent agent = 10;
+
+  map<string, OmniMessageOverride> explicit_channel_omni_message = 12;
+
+  /* Optional. Channel specific message
+   * The key in the map must point to a valid conversation channel as
+   * defined by the enum ConversationChannel. */
+  map<string, ChannelSpecificMessage> channel_specific_message = 13;
+}
+
+message OmniMessageOverride {
+  /* This is a copy of the 'oneof message' definition in AppMessage. This list
+   * has to be duplicated as it's impossible to extract this type and replace
+   * the former definition in AppMessage without breaking backwards
+   * compatibility. */
+  oneof message {
+    TextMessage text_message = 1;
+    MediaMessage media_message = 2;
+    TemplateReference template_reference = 3;
+    ChoiceMessage choice_message = 4;
+    CardMessage card_message = 5;
+    CarouselMessage carousel_message = 6;
+    LocationMessage location_message = 7;
+    ContactInfoMessage contact_info_message = 8;
+    ListMessage list_message = 9;
+  }
+}
+
+message ChannelSpecificMessage {
+  // Channel specific message type
+  string message_type = 1;
+  // The content of the channel specific message
+  google.protobuf.Struct message = 2;
+}
+
+// Message originating from a contact
+message ContactMessage {
+  oneof message {
+    TextMessage text_message = 1;
+    MediaMessage media_message = 2;
+    LocationMessage location_message = 3;
+    ChoiceResponseMessage choice_response_message = 4;
+    MediaCardMessage media_card_message = 6;
+    FallbackMessage fallback_message = 7;
+    MultipleChoiceResponseMessage multiple_choice_response_message = 8;
+    ProductResponseMessage product_response_message = 9;
+    ChannelSpecificMessage channel_specific_message = 10;
+  }
+
+  //Optional. Included if the contact message is a response to a previous App message.
+  ReplyTo reply_to = 5;
+}
+
+// Message containing only text
+message TextMessage {
+  // Required. The text to be sent.
+  string text = 1;
+}
+
+// Message containing media
+message MediaMessage {
+  // Required. Url to the file.
+  string url = 1;
+
+  //Optional. Will be used where it is natively supported
+  string thumbnail_url = 2;
+
+  //Optional. Overrides the media file name.
+  string filename_override = 3;
+}
+
+// Contact Message containing media and caption
+message MediaCardMessage {
+  // Required. Url to the file.
+  string url = 1;
+
+  // Optional. Caption for the media on channels, where its supported.
+  string caption = 2;
+}
+
+// Fallback message, appears when original contact message can not be handled
+message FallbackMessage {
+  // Required. The Reason the fallback message was returned instead of original one.
+  sinch.conversationapi.type.Reason reason = 1;
+
+  // Optional. The raw fallback message if provided by the channel.
+  string raw_message = 2;
+}
+
+// Message referring to predefined template
+message TemplateMessage {
+  /* Optional. Channel specific template reference with parameters per channel.
+   * The channel template if exists overrides the omnichannel template.
+   * At least one of channel_template or omni_template needs to be present.
+   * The key in the map must point to a valid conversation channel as
+   * defined by the enum ConversationChannel. */
+  map<string, TemplateReference> channel_template = 1;
+
+  /* Optional. Omnichannel template stored in Conversation API Template Store
+   * as AppMessage. At least one of channel_template or omni_template needs to be present. */
+  TemplateReference omni_template = 2;
+}
+
+/* Template reference with concrete parameter values
+ *
+ * The referenced template can be an omnichannel template
+ * stored in Conversation API Template Store as AppMessage
+ * or it can reference external channel-specific template
+ * such as WhatsApp Business Template. */
+message TemplateReference {
+  // Required. The ID of the template.
+  string template_id = 1;
+
+  /* Required for omnichannel template. Optional for channel template.
+   * Used to specify what version of a template to use.
+   * This will be used in conjunction with language_code. */
+  string version = 2;
+
+  /* Optional. The BCP-47 language code, such as "en-US" or "sr-Latn".
+   * For more information, see http://www.unicode.org/reports/tr35/#Unicode_locale_identifier.
+   * English is the default language_code. */
+  string language_code = 3;
+
+  /* Optional. Required if the template
+   * has parameters. Concrete values must
+   * be present for all defined parameters
+   * in the template. Parameters can be different for
+   * different versions and/or languages of the template. */
+  map<string, string> parameters = 4;
+
+}
+
+// Message with geo location
+message LocationMessage {
+  /* Required. The title is shown close to the
+   * button or link that leads to a map showing the location.
+   * The title is clickable in some cases. */
+  string title = 1;
+
+  // Required. Geo coordinates.
+  sinch.conversationapi.type.Coordinates coordinates = 2;
+
+  // Optional. Label or name for the position.
+  string label = 3;
+}
+
+/* Choice/Action
+ *
+ * A choice is an action the user can take such as
+ * buttons for quick replies, call actions etc. */
+message Choice {
+  // Required. The choice content.
+  oneof choice {
+    TextMessage text_message = 1;
+    UrlMessage url_message = 2;
+    CallMessage call_message = 3;
+    LocationMessage location_message = 4;
+  }
+
+  /* Optional. This data will be returned in the ChoiceResponseMessage.
+   * The default is message_id_{text, title}. */
+  string postback_data = 5;
+}
+
+/* Call Message
+ *
+ * Message for triggering a call. */
+message CallMessage {
+  /* Required. Title shown close to the phone number.
+   * The title is clickable in some cases. */
+  string title = 1;
+
+  // Required. Phone number in E.164 with leading +.
+  string phone_number = 2;
+}
+
+/* Choice Message
+ *
+ * Message containing choices/actions. */
+message ChoiceMessage {
+  // Required.
+  TextMessage text_message = 1;
+
+  // Required. The number of choices is limited to 10.
+  repeated Choice choices = 2;
+}
+
+/* Card Message
+ *
+ * Message containing text, media and choices. */
+message CardMessage {
+  // Optional.
+  string title = 1;
+
+  // Optional.
+  string description = 2;
+
+  // Optional.
+  MediaMessage media_message = 3;
+
+  /* Optional. The number of choices is limited to 10. */
+  repeated Choice choices = 4;
+
+  // Optional. Will be used where it is natively supported
+  CardHeight height = 5;
+}
+
+/* Carousel Message
+ *
+ * Message containing a list of cards often
+ * rendered horizontally on supported channels. Supported
+ * types for media are only images, e.g. .png, .jpg, .jpeg
+ * extensions. */
+message CarouselMessage {
+  // Required. A list of 1..10 cards.
+  repeated CardMessage cards = 1;
+
+  /* Optional. Outer choices on the carousel level.
+   * The number of outer choices is limited to 10. */
+  repeated Choice choices = 2;
+}
+
+/* Choice Response Message
+ *
+ * Represents a response to a choice message. */
+message ChoiceResponseMessage {
+  // Required. The message id containing the choice.
+  string message_id = 1;
+
+  // Required. The postback_data defined in the selected choice.
+  string postback_data = 2;
+}
+
+/* Multiple Choice Response Message
+ *
+ * Represents a response with multiple choices. */
+message MultipleChoiceResponseMessage {
+  // Required. The message id containing the choice.
+  string message_id = 1;
+
+  // Required. The postback payloads for the selected choices.
+  repeated string postback_data = 2;
+}
+
+/* Url Message
+ *
+ * A generic URL message. */
+message UrlMessage {
+  /* Required. The title shown close to the URL.
+   * The title will be clickable in some cases. */
+  string title = 1;
+
+  // Required. The url to show.
+  string url = 2;
+}
+
+/* Reply To
+ *
+ * If the contact message was a response to a previous App message then this field contains information about that. */
+message ReplyTo {
+  // Required. The Id of the message that this is a response to
+  string message_id = 1;
+}
+
+/* Contact Info Message
+ *
+ * A generic Contact Info message, that speaks directly to the native mobile contacts app. */
+message ContactInfoMessage {
+  // Required. Name information of the contact.
+  NameInfo name = 1;
+
+  // Required. Phone numbers of the contact.
+  repeated PhoneNumberInfo phone_numbers = 2;
+
+  // Optional. Physical addresses of the contact.
+  repeated AddressInfo addresses = 3;
+
+  // Optional. Email addresses of the contact.
+  repeated EmailInfo email_addresses = 4;
+
+  // Optional. Organization information of the contact.
+  OrganizationInfo organization = 5;
+
+  // Optional. URLs/websites associated with the contact.
+  repeated UrlInfo urls = 6;
+
+  /* Optional. Date of birth.
+   * Format: "YYYY-MM-DD"*/
+  string birthday = 7;
+}
+
+/* Address Info object
+ *
+ * A physical address. */
+message AddressInfo {
+  // Optional. City name.
+  string city = 1;
+
+  // Optional. Country name.
+  string country = 2;
+
+  // Optional. Name of a state or region of a country.
+  string state = 3;
+
+  // Optional. Street name including street/apartment number.
+  string street = 4;
+
+  // Optional. Zip/postal code.
+  string zip = 5;
+
+  // Optional. Address type, e.g. WORK or HOME.
+  string type = 6;
+
+  /* Optional. Two letter country code.
+   * Used for formatting. */
+  string country_code = 7;
+}
+
+/* Email Info object
+*
+* An email address. */
+message EmailInfo {
+  // Required. Email address.
+  string email_address = 1;
+
+  // Optional. Email address type, e.g. WORK or HOME.
+  string type = 2;
+}
+
+/* Name Info object
+ *
+ * Name information. */
+message NameInfo {
+  /* Required. Full name.
+   * Will be the displayed contact name. Format as desired. */
+  string full_name = 1;
+
+  // Optional. First name/given name.
+  string first_name = 2;
+
+  // Optional. Family name/last name/surname.
+  string last_name = 3;
+
+  // Optional. Middle name.
+  string middle_name = 4;
+
+  // Optional. Prefix, e.g. Mr or Ms.
+  string prefix = 5;
+
+  // Optional. Suffix, e.g. Jr or PhD.
+  string suffix = 6;
+}
+
+/* Organization Info object
+ *
+ * Organization information. */
+message OrganizationInfo {
+  // Optional. Company name.
+  string company = 1;
+
+  // Optional. Department at the company.
+  string department = 2;
+
+  // Optional. Corporate title, e.g. software engineer.
+  string title = 3;
+}
+
+/* Phone Number Info object
+ *
+ * A Phone number. */
+message PhoneNumberInfo {
+  /* Required. Phone number.
+   * Potential country codes included. */
+  string phone_number = 1;
+
+  // Optional. Phone number type, e.g. WORK or HOME.
+  string type = 2;
+}
+
+/* URL Info
+ * 
+ * A URL/website. */
+message UrlInfo {
+  // Required. The URL to be referenced.
+  string url = 1;
+
+  // Optional. URL type, e.g. HOME or ORG. 
+  string type = 2;
+}
+
+/* List Message
+ *
+ * Message containing multiple sections which can have items such as choices and products.
+ * All items must be of the same type in a List Message. */
+message ListMessage {
+  // Required. The title of the list message.
+  string title = 1;
+
+  // Optional. The description (or subtitle) of the list message.
+  string description = 2;
+
+  // Optional. The media of the list message.
+  MediaMessage media = 3;
+
+  // Required. The sections of the list message.
+  repeated ListSection sections = 4;
+
+  // Optional. List Message specific properties
+  map<string, string> message_properties = 5;
+}
+
+/* List Section
+ *
+ * A section from a list message. */
+message ListSection {
+  // Optional. The title of the list section.
+  string title = 1;
+
+  // Required. The items on this section.
+  repeated ListItem items = 2;
+}
+
+/* List Section
+ *
+ * An item from a list section. */
+message ListItem {
+  // Required. The item information.
+  oneof item {
+    ChoiceItem choice = 1;
+    ProductItem product = 2;
+  }
+}
+
+message ChoiceItem {
+  // Required. The title of this choice item.
+  string title = 1;
+
+  // Optional. The description (or subtitle) of this choice item.
+  string description = 2;
+
+  // Optional. The media of this choice item.
+  MediaMessage media = 3;
+
+  // Optional. Postback data that will be returned in the MO if the user selects
+  // this option.
+  string postback_data = 4;
+}
+
+message ProductItem {
+  // Required. The identifier of the product.
+  string id = 1;
+
+  // Required. Which marketplace the product belongs to. Possible values: FACEBOOK.
+  string marketplace = 2;
+
+  // Output only. The quantity of the chosen product.
+  int32 quantity = 3;
+
+  // Output only. The price of the chosen product.
+  float item_price = 4;
+
+  // Output only. The price currency.
+  string currency = 5;
+}
+
+message ProductResponseMessage {
+  // Required. The selected products.
+  repeated ProductItem products = 1;
+
+  // Optional. Some text that may be sent with the selected products.
+  string text = 2;
+
+  // Optional. The catalog id that the selected products belong to.
+  string catalog_id = 3;
+}

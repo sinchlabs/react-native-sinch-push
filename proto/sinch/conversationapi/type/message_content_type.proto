@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package sinch.conversationapi.type;
+
+option csharp_namespace = "Sinch.ConversationApi.Type";
+option php_namespace = "Sinch\\ConversationApi\\Type";
+option java_package = "com.sinch.conversationapi.type";
+option java_multiple_files = true;
+option java_outer_classname = "MessageContentTypeProto";
+option go_package = "git.clxnetworks.net/dev/conv-api/grpc-gateway/generated/sinch/conversationapi/type";
+
+/* Message Content type
+ *
+ * A message content type. */
+enum MessageContentType {
+
+  /* The default type, indicating that the content is from a common message, not related to marketing or notifications.
+   */
+  CONTENT_UNKNOWN = 0;
+
+  /* Marketing type, indicating that the content is from a marketing message, like a message from a campaign.
+   */
+  CONTENT_MARKETING = 1;
+
+  /* Notification type, indicating that the content is from a notification message, like asking for a charge
+   * or some kind of alert.
+   */
+  CONTENT_NOTIFICATION = 2;
+}

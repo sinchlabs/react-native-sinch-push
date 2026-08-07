@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option java_package = "com.sinch.cnt.v1alpha1";
+
+option go_package = "sinch-sdk-send-service/pkg/gen/proto/sinch/cnt/v1alpha1";
+
+package sinch.cnt.v1alpha1;
+
+message GetFileRequest {
+  string project_id = 1;
+  string object_key = 2;
+  TargetBucket bucket_type = 3;
+}
+
+message GetFileResponse {
+  bytes data = 1;
+  int64 total_file_size = 2;
+  int32 chunk_size = 3;
+  string mime_type = 4;
+}
+
+message StoreFileFromUrlRequest {
+  string project_id = 1;
+  string file_url = 2;
+  Expiration expires = 3;
+  string mime_type = 4;
+}
+
+message StoreFileRequest {
+  string file_url = 1;
+  Expiration expires = 2;
+  string mime_type = 3;
+}
+
+message StoreFileFromUrlResponse {
+  string file_url = 1;
+  string mime_type = 2;
+  int64 content_length = 3;
+}
+
+message StoreMultipleFilesFromUrlRequest {
+  string project_id = 1;
+  repeated StoreFileRequest request = 2;
+}
+
+message StoreMultipleFilesFromUrlResponse {
+  repeated StoreFileFromUrlResponse response = 1;
+}
+
+message GetOccupancyReportRequest {
+  string project_id = 1;
+  TargetBucket target_bucket = 2;
+}
+
+message GetOccupancyReportResponse {
+  int64 num_of_objects = 1;
+  int64 size_in_bytes = 2;
+}
+
+message StoreBinaryDataRequest {
+  string project_id = 1;
+  FileMetadata file_metadata = 2;
+  bytes data = 3;
+  TargetBucket target_bucket = 4;
+}
+
+message StoreBinaryDataResponse {
+  string file_url = 1; //empty for private buckets
+  string mime_type = 2;
+  int64 content_length = 3;
+  string object_key = 4; //key that data is stored at
+}
+
+message DeleteFileRequest {
+  string project_id = 1;
+  string file_name = 2;
+  TargetBucket target_bucket = 3;
+}
+
+message DeleteFileResponse {
+  google.protobuf.Empty response = 1;
+}
+
+message GetPreSignedUrlRequest {
+  string project_id = 1;
+  string file_name = 2;
+  int32 url_expiration = 3; //how long preSignedUrl will be valid, in seconds
+  Expiration file_expiration = 4; //when uploaded content will expire
+}
+
+message GetPreSignedUrlResponse {
+  string pre_signed_url = 1; //Url where file should be uploaded to (with PUT method)
+  string get_url = 2; //Url where file is available after the upload
+  map<string, string> headers = 3; //headers you have to attach to request
+}
+
+message FileMetadata {
+  string mime_type = 2;
+  Expiration expires = 3;
+  string file_name = 4;
+}
+
+// Corresponding numbers in enum (apart from UNSPECIFIED/INDEFINITE)
+// MUST match number of expiration days, since they are used for generating
+// lifecycle rules
+enum Expiration {
+  EXPIRATION_UNSPECIFIED = 0;
+  EXPIRATION_ONE_DAY = 1;
+  EXPIRATION_TWO_DAYS = 2;
+  EXPIRATION_THREE_DAYS = 3;
+  EXPIRATION_FOUR_DAYS = 4;
+  EXPIRATION_FIVE_DAYS = 5;
+  EXPIRATION_SIX_DAYS = 6;
+  EXPIRATION_SEVEN_DAYS = 7;
+  EXPIRATION_TWO_WEEKS = 14;
+  EXPIRATION_THREE_WEEKS = 21;
+  EXPIRATION_FOUR_WEEKS = 28;
+  EXPIRATION_INDEFINITE = 1000;
+}
+
+enum TargetBucket {
+  BUCKET_UNSPECIFIED = 0;
+  PUBLIC = 1;
+  PRIVATE = 2;
+}
