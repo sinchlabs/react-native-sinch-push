@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.name         = "react-native-sinch-push"
   s.version      = package["version"]
   s.summary      = package["description"]
-  s.homepage     = package["repository"]
+  s.homepage     = "https://github.com/sinchlabs/react-native-sinch-push"
   s.license      = package["license"]
   s.authors      = package["author"]
 

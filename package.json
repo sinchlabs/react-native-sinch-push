@@ -1,6 +1,6 @@
 {
-  "name": "react-native-sinch-push",
-  "version": "0.1.0",
+  "name": "@sinch/react-native-sinch-push",
+  "version": "1.0.0",
   "description": "React Native SDK for Sinch Push — identity registration and push receive handling, with native APNs (iOS) and Firebase Cloud Messaging (Android) device token capture. Supports both the old and new (TurboModule) architectures.",
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
@@ -62,9 +62,12 @@
     "apns",
     "turbomodule"
   ],
-  "repository": "https://github.com/sinchlabs/react-native-sinch-push",
+  "repository": "https://github.com/sinchlabs/react-native-sinch-push.git",
   "author": "Sinch",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "@bufbuild/buf": "^1.72.0",
     "@bufbuild/protoc-gen-es": "^2.13.0",

@@ -1,0 +1,122 @@
+# Resolve react_native_pods.rb with node to allow for hoisting
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
+
+platform :ios, min_ios_version_supported
+prepare_react_native_project!
+
+linkage = ENV['USE_FRAMEWORKS']
+if linkage != nil
+  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  use_frameworks! :linkage => linkage.to_sym
+end
+
+target 'Bare074Old' do
+  config = use_native_modules!
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  target 'Bare074OldTests' do
+    inherit! :complete
+    # Pods for testing
+  end
+
+  post_install do |installer|
+    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+      # :ccache_enabled => true
+    )
+
+    # Wrap C++ codegen spec imports in the auto-generated umbrella headers
+    # with `#ifdef RCT_NEW_ARCH_ENABLED`. Without this the Swift module
+    # map pulls C++ STL headers and the SwiftDriver build of the SDK pod
+    # fails with "'utility' file not found" on Xcode 26 / iOS 26 SDK.
+    %w[react-native-sinch-push react-native-keychain].each do |pod_name|
+      support_dir = File.join(installer.sandbox.root, 'Target Support Files', pod_name)
+      next unless File.directory?(support_dir)
+
+      umbrella_path = File.join(support_dir, "#{pod_name}-umbrella.h")
+      if File.exist?(umbrella_path)
+        contents = File.read(umbrella_path)
+        unless contents.include?('#ifdef RCT_NEW_ARCH_ENABLED')
+          cpp_imports = contents.scan(/^#import "[A-Za-z]+Spec.*\.h"$/)
+          unless cpp_imports.empty?
+            guarded = "#ifdef RCT_NEW_ARCH_ENABLED\n" + cpp_imports.join("\n") + "\n#endif\n"
+            stripped = contents.lines.reject { |l| l =~ /^#import "[A-Za-z]+Spec.*\.h"$/ }.join
+            File.open(umbrella_path, 'w') { |f| f.write(stripped + guarded) }
+          end
+        end
+      end
+
+      modulemap_path = File.join(support_dir, "#{pod_name}.modulemap")
+      if File.exist?(modulemap_path)
+        contents = File.read(modulemap_path)
+        # Drop the auto-export of nested modules — they include C++ headers
+        # that Swift cannot compile (`<utility>`, `<optional>`, `<cassert>`).
+        # Consumers can still import the umbrella explicitly.
+        if contents.include?('module * { export * }')
+          new_contents = contents.lines.reject { |l| l.strip == 'module * { export * }' }.join
+          File.open(modulemap_path, 'w') { |f| f.write(new_contents) }
+        end
+      end
+    end
+
+    # This app targets the OLD architecture. Force RCT_NEW_ARCH_ENABLED=0
+    # on every pod target so codegen does not emit TurboModule specs into
+    # each pod's static library (which causes duplicate-symbol link errors
+    # with Xcode 26 / iOS 26 SDK).
+    installer.pods_project.targets.each do |t|
+      t.build_configurations.each do |c|
+        c.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+        defs = Array(c.build_settings['GCC_PREPROCESSOR_DEFINITIONS'])
+        defs << 'RCT_NEW_ARCH_ENABLED=0' unless defs.include?('RCT_NEW_ARCH_ENABLED=0') || defs.include?('RCT_NEW_ARCH_ENABLED=1')
+        c.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = defs
+        # Allow multiple definitions: experimental codegen emits the same
+        # codegen sources into React-Codegen AND each pod's static library,
+        # causing duplicate-symbol errors with Xcode 26 / iOS 26 SDK.
+        c.build_settings['OTHER_LDFLAGS'] = '$(inherited) -Wl,-no_warn_duplicate_libraries'
+      end
+    end
+
+    # Allow duplicate definitions at link time on the app target so the
+    # codegen symbols (which appear in both React-Codegen.a and each pod's
+    # static lib) don't abort the link with Xcode 26 / iOS 26 SDK.
+    installer.aggregate_targets.each do |aggregate_target|
+      aggregate_target.user_project.targets.each do |t|
+        t.build_configurations.each do |c|
+          c.build_settings['OTHER_LDFLAGS'] = '$(inherited) -Wl,-no_warn_duplicate_libraries -Wl,-no_deduplicate -Wl,-multiply_defined,suppress'
+        end
+      end
+      aggregate_target.user_project.save
+    end
+
+    # Remove codegen-generated source files from each pod's compile sources
+    # so they don't get compiled into per-pod static libraries (causing
+    # duplicate-symbol link errors). The single React-Codegen library
+    # already includes them.
+    codegen_file_names = Dir.glob(File.join(installer.sandbox.root, '..', 'build', 'generated', 'ios', '*')).map { |p| File.basename(p) }
+    codegen_file_names += %w[FBReactNativeSpec-generated.mm FBReactNativeSpecJSI-generated.cpp RCTModulesConformingToProtocolsProvider.mm]
+    installer.pods_project.targets.each do |target|
+      next if target.name == 'React-Codegen'
+      next unless target.respond_to?(:source_build_phase)
+      target.source_build_phase.files.dup.each do |build_file|
+        ref = build_file.file_ref
+        next unless ref
+        name = ref.display_name || ref.path
+        next unless codegen_file_names.any? { |cf| name.to_s.include?(cf) }
+        target.source_build_phase.files.delete(build_file)
+      end
+    end
+    installer.pods_project.save
+  end
+end

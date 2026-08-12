@@ -3,14 +3,21 @@ buildscript {
     return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["SinchPush_" + name]
   }
 
+  ext.getExtOrIntegerDefault = { name ->
+    return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["SinchPush_" + name]).toInteger()
+  }
+
+  ext.kotlinVersion = rootProject.ext.has("kotlinVersion") ? rootProject.ext.get("kotlinVersion") : "1.9.22"
+  ext.androidGradlePluginVersion = rootProject.ext.has("androidGradlePluginVersion") ? rootProject.ext.get("androidGradlePluginVersion") : "8.3.0"
+
   repositories {
     google()
     mavenCentral()
   }
 
   dependencies {
-    classpath "com.android.tools.build:gradle"
-    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin"
+    classpath "com.android.tools.build:gradle:${androidGradlePluginVersion}"
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}"
   }
 }
 
