@@ -1,39 +1,35 @@
-# react-native-sinch-push
+# @sinch/react-native-sinch-push
 
-React Native SDK for Sinch Push, using Connect-RPC for identity and device
-management. Supports both the old (bridge) and new (TurboModule) architectures.
-
-Device-token capture and push delivery are handled natively (**APNs** on iOS),
-while identity management business logic runs in JavaScript.
-
-> **Heads up**: `setIdentity` and `removeIdentity` now use Connect-RPC over
-> HTTPS instead of REST. `signedUserID` is now consumed as the HMAC-SHA-512
-> digest input to `IssueTokenWithSignedUuid` (the issued JWT is the bearer
-> token). The public method shapes are unchanged; the wire semantics are.
+React Native SDK for Sinch Push. Registers identities and receives pushes using
+Connect-RPC, with native APNs (iOS) and Firebase Cloud Messaging (Android)
+device-token capture. Supports both the old (bridge) and new (TurboModule)
+architectures.
 
 ## Features
 
-- `SinchPush.initialize(config)` — initialize the SDK (creates Connect transport, sets up Keychain)
-- `SinchPush.setIdentity(signedIdentity)` — register a signed identity (issues JWT over `IssueTokenWithSignedUuid`, then `Subscribe` with the device token)
-- `SinchPush.removeIdentity(signedIdentity)` — unregister an identity (`Unsubscribe` + clear Keychain)
-- `SinchPush.setDeviceToken(token)` — provide a device token from any push service
-- `SinchPush.onPushReceiveHandler(handler)` — subscribe to raw incoming pushes
-- `SinchPush.onInAppMessageHandler(handler)` — **NEW** — subscribe to typed in-app messages (text / media / location / choice / card / carousel)
-- `SinchPush.onTokenReceiveHandler(handler)` — subscribe to device token issue/refresh
-- `SinchPush.getDeviceToken()` — read the latest device token
-- `SinchPush.registerForToken()` — explicitly request a device token (iOS only)
+- `initialize(config)` — initialize the SDK (creates the Connect transport, sets up Keychain)
+- `setIdentity(signedIdentity)` — register a signed identity (issues a JWT over `IssueTokenWithSignedUuid`, then `Subscribe` with the device token)
+- `removeIdentity(signedIdentity)` — unregister an identity (`Unsubscribe` + clear Keychain)
+- `setDeviceToken(token)` — provide a device token from any push service
+- `onPushReceiveHandler(handler)` — subscribe to raw incoming pushes
+- `onInAppMessageHandler(handler)` — subscribe to typed in-app messages (text / media / location / choice / card / carousel)
+- `onTokenReceiveHandler(handler)` — subscribe to device token issue/refresh
+- `getDeviceToken()` — read the latest device token
+- `registerForToken()` — explicitly request a device token (iOS only)
 
 ## Installation
 
 ```sh
-npm install react-native-sinch-push react-native-keychain
+npm install @sinch/react-native-sinch-push react-native-keychain
 # or
-yarn add react-native-sinch-push react-native-keychain
+yarn add @sinch/react-native-sinch-push react-native-keychain
 ```
 
-`react-native-keychain` is required at runtime for token storage. The
-issued JWT from `IssueTokenWithSignedUuid` is persisted in the iOS
-Keychain / Android Keystore so that it survives app restarts.
+`react-native-keychain` is a peer dependency, required at runtime for token
+storage. The JWT issued by `IssueTokenWithSignedUuid` is persisted in the iOS
+Keychain / Android Keystore so it survives app restarts.
+
+## Setup
 
 ### iOS
 
@@ -115,10 +111,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 Autolinking registers the native package; no manual `MainApplication` changes
 are needed on RN 0.60+.
 
-## Usage
+## Quick start
 
 ```ts
-import SinchPush from 'react-native-sinch-push';
+import SinchPush from '@sinch/react-native-sinch-push';
 
 async function bootstrap() {
   // 1. Initialize the SDK — sets up the Connect transport and Keychain.
@@ -145,7 +141,7 @@ async function bootstrap() {
     console.log('push received', message.title, message.body, message.data);
   });
 
-  // 5. Typed in-app messages (NEW). The SDK base64-decodes the
+  // 5. Typed in-app messages. The SDK base64-decodes the
   //    `protobufPayload` from the push and decodes the AppMessage
   //    into the discriminated union below.
   const inAppSub = SinchPush.onInAppMessageHandler((msg) => {
@@ -159,7 +155,7 @@ async function bootstrap() {
     }
   });
 
-  // 6. Register the identity. SDK calls
+  // 6. Register the identity. The SDK calls
   //    IssueTokenWithSignedUuid({ uuid, uuid_hash }) to mint a JWT,
   //    then Subscribe({ config, token }) with the device token.
   //    The JWT is persisted to Keychain and used as the bearer
@@ -182,11 +178,11 @@ async function bootstrap() {
 
 ## Signing the identity (HMAC-SHA-512)
 
-`signedUserID` is the **HMAC-SHA-512 hex digest** of `userID` keyed by the
-app secret from the Sinch Build Dashboard. It is **not** the bearer token —
-it is the `uuid_hash` input to `IssueTokenWithSignedUuid`. The SDK mints the
-actual JWT from the chat SDK service and uses it as the bearer token on
-`Subscribe` / `Unsubscribe` calls.
+`signedUserID` is the **HMAC-SHA-512 hex digest** of `userID` keyed by the app
+secret from the Sinch Build Dashboard. It is **not** the bearer token — it is
+the `uuid_hash` input to `IssueTokenWithSignedUuid`. The SDK mints the actual
+JWT from the chat SDK service and uses it as the bearer token on `Subscribe` /
+`Unsubscribe` calls.
 
 Sign on your **backend** (never on the device) using HMAC-SHA-512 with the
 secret token from the Sinch Build Dashboard.
@@ -237,7 +233,7 @@ the result to any handler registered with `onInAppMessageHandler`. The
 handler receives a discriminated union — switch on `kind` to narrow.
 
 ```ts
-import SinchPush from 'react-native-sinch-push';
+import SinchPush from '@sinch/react-native-sinch-push';
 
 SinchPush.onInAppMessageHandler((msg) => {
   switch (msg.kind) {
@@ -280,7 +276,9 @@ Pushes that do **not** carry a `protobufPayload` are not delivered here —
 they're only delivered via `onPushReceiveHandler` (which always sees every
 push).
 
-## API
+## API reference
+
+### Methods
 
 | Method | Description |
 | --- | --- |
@@ -382,50 +380,13 @@ interface Subscription {
 
 ### Base URLs by environment
 
-| `env` | Push base URL                              | Chat base URL                              |
+| `env` | Push base URL | Chat base URL |
 | ----- | ------------------------------------------ | ------------------------------------------ |
-| `eu1` | `https://grpc.sinch-push.prod.sinch.com`   | `https://grpc.sinch-chat.prod.sinch.com`   |
+| `eu1` | `https://grpc.sinch-push.prod.sinch.com` | `https://grpc.sinch-chat.prod.sinch.com` |
 | `us1` | `https://grpc.sinch-push.us1.prod.sinch.com` | `https://grpc.sinch-chat.us1.prod.sinch.com` |
-| `custom` | `customPushApiUrl` value                | `customChatApiUrl` value                   |
+| `custom` | `customPushApiUrl` value | `customChatApiUrl` value |
 
 Both services speak the Connect protocol over HTTPS on port 443.
-
-## Architecture
-
-- **JavaScript** owns all business logic: `initialize` (sets up transport +
-  Keychain), `setIdentity` (Connect-RPC `IssueTokenWithSignedUuid` +
-  `Subscribe`), `removeIdentity` (`Unsubscribe` + Keychain clear),
-  `setDeviceToken` (token injection). Uses `@connectrpc/connect-web` over
-  global `fetch` for HTTPS calls. Auth tokens persisted via
-  `react-native-keychain`.
-- **iOS** (`SinchPush.swift`) is a single `RCTEventEmitter` that captures APNs
-  tokens and forwards push payloads. No Sinch-specific logic.
-- **Android** (`SinchPushModuleImpl.kt`) exposes event emitter plumbing only. No
-  push service dependency. Tokens are injected via JS or forwarded natively through
-  `SinchPushEmitter`.
-
-## Generating protos
-
-The TypeScript bindings for the Sinch gRPC contracts in `proto/` are generated
-from the `.proto` files into `src/generated/` and shipped inside the npm
-tarball.
-
-```sh
-npm run proto:gen              # preferred — uses buf generate
-npm run proto:gen:protoc       # fallback — raw protoc, supports --target=push|chat|app|all
-npm run proto:clean            # wipe src/generated/
-```
-
-Both paths use `@bufbuild/protoc-gen-es` (Protobuf-ES v2), which emits one
-`*_pb.ts` per input `.proto` file containing message schemas and service
-descriptors.
-
-## What's removed
-
-> **Removed**: `POST /v1/identities` and `POST /v1/identities/remove` REST
-> endpoints are no longer used. `setIdentity` and `removeIdentity` are the
-> only public path — they talk to `IssueTokenWithSignedUuid`, `Subscribe`,
-> and `Unsubscribe` over Connect-RPC.
 
 ## License
 

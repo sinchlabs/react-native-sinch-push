@@ -1,0 +1,132 @@
+require File.join(File.dirname(`node --print "require.resolve('expo/package.json')"`), "scripts/autolinking")
+require File.join(File.dirname(`node --print "require.resolve('react-native/package.json')"`), "scripts/react_native_pods")
+
+require 'json'
+podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties.json'))) rescue {}
+
+ENV['RCT_NEW_ARCH_ENABLED'] = podfile_properties['newArchEnabled'] == 'true' ? '1' : '0'
+ENV['EX_DEV_CLIENT_NETWORK_INSPECTOR'] = podfile_properties['EX_DEV_CLIENT_NETWORK_INSPECTOR']
+
+platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
+install! 'cocoapods',
+  :deterministic_uuids => false
+
+prepare_react_native_project!
+
+target 'Expo52New' do
+  use_expo_modules!
+
+  if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
+    config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];
+  else
+    config_command = [
+      'node',
+      '--no-warnings',
+      '--eval',
+      'require(require.resolve(\'expo-modules-autolinking\', { paths: [require.resolve(\'expo/package.json\')] }))(process.argv.slice(1))',
+      'react-native-config',
+      '--json',
+      '--platform',
+      'ios'
+    ]
+  end
+
+  config = use_native_modules!(config_command)
+
+  use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
+  use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    :hermes_enabled => podfile_properties['expo.jsEngine'] == nil || podfile_properties['expo.jsEngine'] == 'hermes',
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/..",
+    :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
+  )
+
+  post_install do |installer|
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+      :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
+    )
+
+    # This is necessary for Xcode 14, because it signs resource bundles by default
+    # when building for devices.
+    installer.target_installation_results.pod_target_installation_results
+      .each do |pod_name, target_installation_result|
+      target_installation_result.resource_bundle_targets.each do |resource_bundle_target|
+        resource_bundle_target.build_configurations.each do |config|
+          config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+        end
+      end
+    end
+
+    # Patch the SDK pod's modulemap so Swift's dependency scanning does not
+    # pull in C++ STL headers via the auto-exported submodules.
+    %w[react-native-sinch-push react-native-keychain].each do |pod_name|
+      support_dir = File.join(installer.sandbox.root, 'Target Support Files', pod_name)
+      next unless File.directory?(support_dir)
+
+      modulemap_path = File.join(support_dir, "#{pod_name}.modulemap")
+      if File.exist?(modulemap_path)
+        contents = File.read(modulemap_path)
+        if contents.include?('module * { export * }')
+          new_contents = contents.lines.reject { |l| l.strip == 'module * { export * }' }.join
+          File.open(modulemap_path, 'w') { |f| f.write(new_contents) }
+        end
+      end
+    end
+
+    # Force FMT_USE_CONSTEVAL=0 across all pod targets — Xcode 26's clang
+    # rejects fmt's consteval format-string constructors.
+    installer.pods_project.targets.each do |t|
+      t.build_configurations.each do |c|
+        c.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+        defs = Array(c.build_settings['GCC_PREPROCESSOR_DEFINITIONS'])
+        defs << 'FMT_USE_CONSTEVAL=0' unless defs.include?('FMT_USE_CONSTEVAL=0')
+        c.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = defs
+      end
+    end
+
+    fmt_base = File.join(installer.sandbox.root, 'fmt', 'include', 'fmt', 'base.h')
+    if File.exist?(fmt_base)
+      contents = File.read(fmt_base)
+      unless contents.include?('// FMT_CONSTEVAL_PATCHED')
+        detect_block = <<~'PATCHED'
+          // Detect consteval, C++20 constexpr extensions and std::is_constant_evaluated.
+          // FMT_CONSTEVAL_PATCHED: hard-disable for Xcode 26 compatibility.
+          #define FMT_USE_CONSTEVAL 0
+          #if 0 // original detect block disabled
+          #if !defined(__cpp_lib_is_constant_evaluated)
+          #  define FMT_USE_CONSTEVAL 0
+          #elif FMT_CPLUSPLUS < 201709L
+          #  define FMT_USE_CONSTEVAL 0
+          #elif FMT_GLIBCXX_RELEASE && FMT_GLIBCXX_RELEASE < 10
+          #  define FMT_USE_CONSTEVAL 0
+          #elif FMT_LIBCPP_VERSION && FMT_LIBCPP_VERSION < 10000
+          #  define FMT_USE_CONSTEVAL 0
+          #elif defined(__apple_build_version__) && __apple_build_version__ < 14000029L
+          #  define FMT_USE_CONSTEVAL 0  // consteval is broken in Apple clang < 14.
+          #elif FMT_MSC_VERSION && FMT_MSC_VERSION < 1929
+          #  define FMT_USE_CONSTEVAL 0  // consteval is broken in MSVC VS2019 < 16.10.
+          #elif defined(__cpp_consteval)
+          #  define FMT_USE_CONSTEVAL 1
+          #elif FMT_GCC_VERSION >= 1002 || FMT_CLANG_VERSION >= 1101
+          #  define FMT_USE_CONSTEVAL 1
+          #else
+          #  define FMT_USE_CONSTEVAL 0
+          #endif
+          #endif // FMT_CONSTEVAL_PATCHED
+        PATCHED
+        start_idx = contents.index('// Detect consteval, C++20 constexpr extensions and std::is_constant_evaluated.')
+        end_idx = start_idx && contents.index('#if FMT_USE_CONSTEVAL', start_idx)
+        if start_idx && end_idx
+          patched = contents[0...start_idx] + detect_block + contents[end_idx..]
+          File.open(fmt_base, 'w') { |f| f.write(patched) }
+        end
+      end
+    end
+  end
+end
