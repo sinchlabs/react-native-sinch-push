@@ -26,6 +26,9 @@ Pods/
 **/generated/
 .protoc-cache/
 
+# Internal (removed from history; keep local copies untracked)
+proto/
+
 # Editors
 .idea/
 .vscode/
