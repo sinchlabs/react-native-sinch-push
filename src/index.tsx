@@ -1,3 +1,4 @@
+import './textEncoding';
 import { NativeModules, Platform } from 'react-native';
 import type { Spec } from './NativeSinchPush';
 import {
@@ -9,8 +10,15 @@ import {
   buildTransport,
   resolveRegion,
   setAuthToken,
+  defaultDeviceTokenStorage,
 } from './api';
-import type { AuthDataSource, AuthRepository, PushRepository, Transport } from './api';
+import type {
+  AuthDataSource,
+  AuthRepository,
+  DeviceTokenStorage,
+  PushRepository,
+  Transport,
+} from './api';
 import type { AppConfig, SinchIdentity } from './api/authRepository';
 import { onInAppMessageHandler } from './api/inAppMessage';
 import { subscribeToPush, subscribeToToken } from './api/eventBus';
@@ -62,13 +70,18 @@ export const EVENT_PUSH_RECEIVED = 'SinchPush:onPushReceived';
 export const EVENT_TOKEN_RECEIVED = 'SinchPush:onTokenReceived';
 
 let _config: SinchPushConfig | null = null;
-let _transport: Transport | null = null;
+let _authTransport: Transport | null = null;
+let _pushTransport: Transport | null = null;
 let _authDataSource: AuthDataSource | null = null;
 let _authRepository: AuthRepository | null = null;
 let _pushRepository: PushRepository | null = null;
-let _deviceToken: string | null = null;
+let _deviceTokenStorage: DeviceTokenStorage = defaultDeviceTokenStorage;
+let _tokenResendSub: Subscription | null = null;
 
-export function initialize(config: SinchPushConfig): Promise<void> {
+export function initialize(
+  config: SinchPushConfig,
+  options: { deviceTokenStorage?: DeviceTokenStorage } = {},
+): Promise<void> {
   if (!config.projectID) {
     return Promise.reject(new Error('initialize requires projectID'));
   }
@@ -88,10 +101,17 @@ export function initialize(config: SinchPushConfig): Promise<void> {
   }
 
   _config = config;
+  if (options.deviceTokenStorage) {
+    _deviceTokenStorage = options.deviceTokenStorage;
+  }
   const { pushBaseUrl, chatBaseUrl } = resolveRegion(config);
-  _transport = buildTransport({
-    pushBaseUrl,
-    chatBaseUrl,
+  _authTransport = buildTransport({
+    baseUrl: chatBaseUrl,
+    useBinaryFormat: false,
+    enableLogging: config.enableLogging,
+  });
+  _pushTransport = buildTransport({
+    baseUrl: pushBaseUrl,
     enableLogging: config.enableLogging,
   });
 
@@ -103,15 +123,27 @@ export function initialize(config: SinchPushConfig): Promise<void> {
     customPushApiUrl: config.customPushApiUrl,
   });
   const storage = new KeychainTokenStorage(account);
-  _authRepository = new DefaultAuthRepository(_transport);
+  _authRepository = new DefaultAuthRepository(_authTransport);
   _authDataSource = new DefaultAuthDataSource(_authRepository, storage);
-  _pushRepository = new DefaultPushRepository(_transport);
+  _pushRepository = new DefaultPushRepository(_pushTransport);
 
-  _authDataSource.currentAccessToken().then((t) => setAuthToken(t)).catch(() => {});
+  // Install the persistent token-event watcher BEFORE we trigger native token
+  // capture so the very first emission (which may be the FCM token fetched
+  // synchronously-enough after init) routes through the resend-on-change path.
+  installTokenResendWatcher();
+
+  _authDataSource
+    .currentAccessToken()
+    .then((t) => {
+      if (t) {
+        setAuthToken(t);
+      }
+    })
+    .catch(() => {});
 
   const autoRegister = config.autoRegisterForToken !== false;
   if (autoRegister) {
-    return SinchPushNativeModule.registerForToken();
+    return SinchPushNativeModule.registerForToken().then(() => undefined);
   }
   return Promise.resolve();
 }
@@ -143,6 +175,7 @@ export async function setIdentity(signedIdentity: SignedIdentity): Promise<void>
   const dt = await getDeviceToken();
   if (dt?.token) {
     await _pushRepository.sendDeviceToken(dt.token, token.accessToken, appConfig.configID);
+    await _deviceTokenStorage.writeLastSent(dt.token);
   }
 }
 
@@ -166,7 +199,10 @@ export async function removeIdentity(signedIdentity: SignedIdentity): Promise<vo
     }
   }
   await _authDataSource.deleteToken();
+  await _deviceTokenStorage.clearLastSent();
 }
+
+let _deviceToken: string | null = null;
 
 export function setDeviceToken(token: string): void {
   if (!token) {
@@ -225,3 +261,47 @@ const SinchPush = {
 };
 
 export default SinchPush;
+
+// --- internal --------------------------------------------------------------
+
+function installTokenResendWatcher(): void {
+  // Idempotent: replace any previous subscription so repeated initialize()
+  // calls don't stack watchers.
+  if (_tokenResendSub) {
+    _tokenResendSub.remove();
+    _tokenResendSub = null;
+  }
+  _tokenResendSub = subscribeToToken((deviceToken) => {
+    void maybeResendDeviceToken(deviceToken.token, deviceToken.type);
+  });
+}
+
+async function maybeResendDeviceToken(
+  token: string,
+  type: DeviceTokenType,
+): Promise<void> {
+  if (!_config || !_pushRepository) return;
+  if (type !== defaultTokenType()) return;
+
+  // We can only Subscribe on behalf of an authenticated identity. If the user
+  // is not logged in, do nothing — setIdentity() will resend.
+  const auth = _authDataSource ? await _authDataSource.currentAuthorization() : null;
+  if (!auth) return;
+
+  const lastSent = await _deviceTokenStorage.readLastSent();
+  if (lastSent === token) return;
+
+  try {
+    await _pushRepository.sendDeviceToken(
+      token,
+      auth.accessToken,
+      _config.configID,
+    );
+    await _deviceTokenStorage.writeLastSent(token);
+  } catch (e) {
+    // Don't persist the new token on failure — we want to retry on the next
+    // token event or next app start.
+    // eslint-disable-next-line no-console
+    console.warn('[sinch] auto resend device token failed', e);
+  }
+}

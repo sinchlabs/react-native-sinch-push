@@ -11,6 +11,8 @@ object SinchPushEmitter {
   const val EVENT_TOKEN_RECEIVED = "SinchPush:onTokenReceived"
   const val EVENT_PUSH_RECEIVED = "SinchPush:onPushReceived"
 
+  const val TOKEN_TYPE_FCM = "fcm"
+
   @Volatile
   private var reactContext: ReactApplicationContext? = null
 
@@ -18,10 +20,14 @@ object SinchPushEmitter {
   var latestToken: String? = null
     private set
 
+  @Volatile
+  var latestTokenType: String = TOKEN_TYPE_FCM
+    private set
+
   @Synchronized
   fun attachReactContext(context: ReactApplicationContext) {
     reactContext = context
-    latestToken?.let { emitToken(it) }
+    latestToken?.let { emitToken(it, latestTokenType) }
   }
 
   @Synchronized
@@ -31,9 +37,10 @@ object SinchPushEmitter {
     }
   }
 
-  fun onNewToken(token: String) {
+  fun onNewToken(token: String, type: String = TOKEN_TYPE_FCM) {
     latestToken = token
-    emitToken(token)
+    latestTokenType = type
+    emitToken(token, type)
   }
 
   fun onMessage(data: Map<String, String>, title: String?, body: String?) {
@@ -43,17 +50,17 @@ object SinchPushEmitter {
       dataMap.putString(key, value)
     }
     payload.putMap("data", dataMap)
-    payload.putString("source", "fcm")
+    payload.putString("source", latestTokenType)
     data["identity"]?.let { payload.putString("identity", it) }
-    title?.let { payload.putString("title", it) }
-    body?.let { payload.putString("body", it) }
+    title?.let { payload.putString("title", title) }
+    body?.let { payload.putString("body", body) }
     emit(EVENT_PUSH_RECEIVED, payload)
   }
 
-  fun emitToken(token: String) {
+  fun emitToken(token: String, type: String) {
     val payload: WritableMap = Arguments.createMap()
     payload.putString("token", token)
-    payload.putString("type", "fcm")
+    payload.putString("type", type)
     emit(EVENT_TOKEN_RECEIVED, payload)
   }
 

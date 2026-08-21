@@ -1,4 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type {
+  DeviceToken,
+  InAppMessage,
+  SinchPushConfig,
+  SinchPushMessage,
+  Subscription,
+} from '@sinch/react-native-sinch-push';
+import SinchPush from '@sinch/react-native-sinch-push';
+import CryptoJS from 'crypto-js';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   Platform,
   ScrollView,
@@ -8,49 +17,20 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import SinchPush from '@sinch/react-native-sinch-push';
-import type {
-  DeviceToken,
-  InAppMessage,
-  SinchPushConfig,
-  SinchPushMessage,
-  Subscription,
-} from '@sinch/react-native-sinch-push';
 
-type Env = 'eu1' | 'us1' | 'custom';
+type Env = 'eu1' | 'us1' | 'staging' | 'custom';
 
 type EventRow =
-  | { kind: 'token'; at: number; token: DeviceToken }
-  | { kind: 'push'; at: number; message: SinchPushMessage }
-  | { kind: 'inApp'; at: number; message: InAppMessage }
-  | { kind: 'info'; at: number; text: string };
+  | {kind: 'token'; at: number; token: DeviceToken}
+  | {kind: 'push'; at: number; message: SinchPushMessage}
+  | {kind: 'inApp'; at: number; message: InAppMessage}
+  | {kind: 'info'; at: number; text: string};
 
 const MAX_LOG_ROWS = 50;
-const DEV_SIGN_SECRET = 'example-dev-only-do-not-use-in-prod';
+const DEV_SIGN_SECRET = 'e2';
 
-async function hmacSha512Hex(message: string, secret: string): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(secret),
-    { name: 'HMAC', hash: 'SHA-512' },
-    false,
-    ['sign'],
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
-  return Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function randomHex(byteLen: number): string {
-  const bytes = new Uint8Array(byteLen);
-  for (let i = 0; i < byteLen; i++) {
-    bytes[i] = Math.floor(Math.random() * 256);
-  }
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+function hmacSha512Hex(message: string, secret: string): string {
+  return CryptoJS.HmacSHA512(message, secret).toString(CryptoJS.enc.Hex);
 }
 
 function inAppSummary(msg: InAppMessage): string {
@@ -71,13 +51,21 @@ function inAppSummary(msg: InAppMessage): string {
 }
 
 export function DemoScreen() {
-  const [projectID, setProjectID] = useState('example-project-id');
-  const [clientID, setClientID] = useState('example-client-id');
-  const [configID, setConfigID] = useState('example-config-id');
+  const [projectID, setProjectID] = useState(
+    '490b5866-4b87-45d9-96f6-7ea31fc1b9b2',
+  );
+  const [clientID, setClientID] = useState('01HDMA7S9F1W5A8ZMW1M2VQBYA');
+  const [configID, setConfigID] = useState(
+    Platform.OS == 'ios'
+      ? '01M0CPNH8634XTZ1GK3NT2E3CR'
+      : '01M0D1PDXZFF1B3TBS77R0558Q',
+  );
   const [env, setEnv] = useState<Env>('eu1');
   const [customPush, setCustomPush] = useState('');
   const [customChat, setCustomChat] = useState('');
-  const [userID, setUserID] = useState(`user-${Math.floor(Math.random() * 1e6)}`);
+  const [userID, setUserID] = useState(
+    `user-${Math.floor(Math.random() * 1e6)}`,
+  );
 
   const [initialized, setInitialized] = useState(false);
   const [deviceToken, setDeviceToken] = useState<DeviceToken | null>(null);
@@ -91,11 +79,11 @@ export function DemoScreen() {
   }>({});
 
   const pushLog = useCallback((row: EventRow) => {
-    setLog((prev) => [row, ...prev].slice(0, MAX_LOG_ROWS));
+    setLog(prev => [row, ...prev].slice(0, MAX_LOG_ROWS));
   }, []);
 
   const info = useCallback(
-    (text: string) => pushLog({ kind: 'info', at: Date.now(), text }),
+    (text: string) => pushLog({kind: 'info', at: Date.now(), text}),
     [pushLog],
   );
 
@@ -113,10 +101,15 @@ export function DemoScreen() {
         projectID,
         clientID,
         configID,
-        env,
+        env: env === 'staging' ? 'custom' : env,
         enableLogging: __DEV__,
       };
-      if (env === 'custom') {
+      if (env === 'staging') {
+        config.customPushApiUrl =
+          'https://grpc-web.sinch-push.staging.sinch.com';
+        config.customChatApiUrl =
+          'https://grpc-web.sinch-chat.unauth.staging.sinch.com';
+      } else if (env === 'custom') {
         config.customPushApiUrl = customPush;
         config.customChatApiUrl = customChat;
       }
@@ -128,15 +121,15 @@ export function DemoScreen() {
       subsRef.current.push?.remove();
       subsRef.current.inApp?.remove();
 
-      subsRef.current.token = SinchPush.onTokenReceiveHandler((t) => {
+      subsRef.current.token = SinchPush.onTokenReceiveHandler(t => {
         setDeviceToken(t);
-        pushLog({ kind: 'token', at: Date.now(), token: t });
+        pushLog({kind: 'token', at: Date.now(), token: t});
       });
-      subsRef.current.push = SinchPush.onPushReceiveHandler((m) => {
-        pushLog({ kind: 'push', at: Date.now(), message: m });
+      subsRef.current.push = SinchPush.onPushReceiveHandler(m => {
+        pushLog({kind: 'push', at: Date.now(), message: m});
       });
-      subsRef.current.inApp = SinchPush.onInAppMessageHandler((m) => {
-        pushLog({ kind: 'inApp', at: Date.now(), message: m });
+      subsRef.current.inApp = SinchPush.onInAppMessageHandler(m => {
+        pushLog({kind: 'inApp', at: Date.now(), message: m});
       });
 
       try {
@@ -164,21 +157,14 @@ export function DemoScreen() {
     pushLog,
   ]);
 
-  const handleSetDeviceToken = useCallback(() => {
-    const token = randomHex(32);
-    SinchPush.setDeviceToken(token);
-    setDeviceToken({ token, type: Platform.OS === 'ios' ? 'apns' : 'fcm' });
-    info(`setDeviceToken (synthetic): ${token.slice(0, 12)}…`);
-  }, [info]);
-
   const handleSetIdentity = useCallback(async () => {
     if (!initialized) {
       info('initialize first');
       return;
     }
     try {
-      const signedUserID = await hmacSha512Hex(userID, DEV_SIGN_SECRET);
-      await SinchPush.setIdentity({ userID, signedUserID });
+      const signedUserID = hmacSha512Hex(userID, DEV_SIGN_SECRET);
+      await SinchPush.setIdentity({userID, signedUserID});
       setIdentity(userID);
       info(`setIdentity: ${userID}`);
     } catch (e) {
@@ -192,8 +178,8 @@ export function DemoScreen() {
       return;
     }
     try {
-      const signedUserID = await hmacSha512Hex(userID, DEV_SIGN_SECRET);
-      await SinchPush.removeIdentity({ userID, signedUserID });
+      const signedUserID = hmacSha512Hex(userID, DEV_SIGN_SECRET);
+      await SinchPush.removeIdentity({userID, signedUserID});
       setIdentity(null);
       info('removeIdentity ok');
     } catch (e) {
@@ -201,21 +187,20 @@ export function DemoScreen() {
     }
   }, [initialized, userID, info]);
 
-  const envs = useMemo<Env[]>(() => ['eu1', 'us1', 'custom'], []);
+  const envs = useMemo<Env[]>(() => ['eu1', 'us1', 'staging', 'custom'], []);
 
   return (
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    >
+      keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>@sinch/react-native-sinch-push</Text>
       <Text style={styles.subtitle}>
         Platform: {Platform.OS} {`·`} Architecture:{' '}
-        {((global as unknown as { __turboModuleProxy?: unknown })
+        {(global as unknown as {__turboModuleProxy?: unknown})
           .__turboModuleProxy
           ? 'new (TurboModule)'
-          : 'old (bridge)')}
+          : 'old (bridge)'}
       </Text>
 
       <View style={styles.statusBox}>
@@ -237,18 +222,13 @@ export function DemoScreen() {
         <Field label="configID" value={configID} onChange={setConfigID} />
         <Text style={styles.fieldLabel}>env</Text>
         <View style={styles.row}>
-          {envs.map((e) => (
+          {envs.map(e => (
             <TouchableOpacity
               key={e}
               onPress={() => setEnv(e)}
-              style={[styles.chip, env === e && styles.chipActive]}
-            >
+              style={[styles.chip, env === e && styles.chipActive]}>
               <Text
-                style={[
-                  styles.chipText,
-                  env === e && styles.chipTextActive,
-                ]}
-              >
+                style={[styles.chipText, env === e && styles.chipTextActive]}>
                 {e}
               </Text>
             </TouchableOpacity>
@@ -276,7 +256,6 @@ export function DemoScreen() {
 
       <View style={styles.btnGroup}>
         <Button title="Initialize" onPress={handleInitialize} primary />
-        <Button title="Set Device Token (random)" onPress={handleSetDeviceToken} />
         <Button title="Set Identity" onPress={handleSetIdentity} />
         <Button title="Remove Identity" onPress={handleRemoveIdentity} />
       </View>
@@ -343,8 +322,7 @@ function Button({
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={[styles.button, primary && styles.buttonPrimary]}
-    >
+      style={[styles.button, primary && styles.buttonPrimary]}>
       <Text style={[styles.buttonText, primary && styles.buttonTextPrimary]}>
         {title}
       </Text>
@@ -352,7 +330,7 @@ function Button({
   );
 }
 
-function LogRow({ row }: { row: EventRow }) {
+function LogRow({row}: {row: EventRow}) {
   const ts = new Date(row.at).toLocaleTimeString();
   if (row.kind === 'info') {
     return (
@@ -398,22 +376,22 @@ function LogRow({ row }: { row: EventRow }) {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: '#0f1115' },
-  container: { padding: 16, paddingBottom: 64 },
+  scroll: {flex: 1, backgroundColor: '#0f1115'},
+  container: {padding: 16, paddingBottom: 64},
   title: {
     color: '#fff',
     fontSize: 22,
     fontWeight: '700',
     marginBottom: 4,
   },
-  subtitle: { color: '#9aa3b2', fontSize: 12, marginBottom: 16 },
+  subtitle: {color: '#9aa3b2', fontSize: 12, marginBottom: 16},
   statusBox: {
     backgroundColor: '#1a1f29',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
   },
-  statusLine: { color: '#cfd6e4', fontSize: 13, marginBottom: 4 },
+  statusLine: {color: '#cfd6e4', fontSize: 13, marginBottom: 4},
   section: {
     backgroundColor: '#1a1f29',
     borderRadius: 8,
@@ -426,9 +404,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
   },
-  sectionBody: { gap: 4 },
-  field: { marginBottom: 8 },
-  fieldLabel: { color: '#9aa3b2', fontSize: 12, marginBottom: 4 },
+  sectionBody: {gap: 4},
+  field: {marginBottom: 8},
+  fieldLabel: {color: '#9aa3b2', fontSize: 12, marginBottom: 4},
   input: {
     backgroundColor: '#0f1115',
     borderColor: '#2a3142',
@@ -439,7 +417,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 14,
   },
-  row: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  row: {flexDirection: 'row', gap: 8, marginBottom: 8},
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -447,10 +425,10 @@ const styles = StyleSheet.create({
     borderColor: '#2a3142',
     borderWidth: 1,
   },
-  chipActive: { backgroundColor: '#3a4356', borderColor: '#5b6680' },
-  chipText: { color: '#9aa3b2', fontSize: 12 },
-  chipTextActive: { color: '#fff' },
-  btnGroup: { gap: 8, marginBottom: 16 },
+  chipActive: {backgroundColor: '#3a4356', borderColor: '#5b6680'},
+  chipText: {color: '#9aa3b2', fontSize: 12},
+  chipTextActive: {color: '#fff'},
+  btnGroup: {gap: 8, marginBottom: 16},
   button: {
     backgroundColor: '#1a1f29',
     paddingVertical: 12,
@@ -458,10 +436,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
-  buttonPrimary: { backgroundColor: '#3a6df0' },
-  buttonText: { color: '#cfd6e4', fontSize: 14, fontWeight: '600' },
-  buttonTextPrimary: { color: '#fff' },
-  empty: { color: '#6b7280', fontStyle: 'italic' },
+  buttonPrimary: {backgroundColor: '#3a6df0'},
+  buttonText: {color: '#cfd6e4', fontSize: 14, fontWeight: '600'},
+  buttonTextPrimary: {color: '#fff'},
+  empty: {color: '#6b7280', fontStyle: 'italic'},
   logRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -478,10 +456,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
     overflow: 'hidden',
   },
-  logInfo: { backgroundColor: '#2a3142', color: '#cfd6e4' },
-  logToken: { backgroundColor: '#1f3a52', color: '#9ec5ff' },
-  logPush: { backgroundColor: '#3a2f1f', color: '#ffd29e' },
-  logInApp: { backgroundColor: '#1f3a2a', color: '#9eff9e' },
-  logBody: { color: '#cfd6e4', fontSize: 12, flex: 1 },
-  logTs: { color: '#6b7280', fontSize: 10, marginLeft: 8 },
+  logInfo: {backgroundColor: '#2a3142', color: '#cfd6e4'},
+  logToken: {backgroundColor: '#1f3a52', color: '#9ec5ff'},
+  logPush: {backgroundColor: '#3a2f1f', color: '#ffd29e'},
+  logInApp: {backgroundColor: '#1f3a2a', color: '#9eff9e'},
+  logBody: {color: '#cfd6e4', fontSize: 12, flex: 1},
+  logTs: {color: '#6b7280', fontSize: 10, marginLeft: 8},
 });

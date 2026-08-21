@@ -36,6 +36,12 @@ def getExtOrIntegerDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["SinchPush_" + name]).toInteger()
 }
 
+// FCM integration mode. Hosts override via rootProject.ext.SinchPush_firebaseMessaging
+// ("optional" | "required" | "none"). The library falls back to gradle.properties.
+def firebaseMessagingMode = getExtOrDefault("firebaseMessaging")
+def firebaseMessagingAvailable = firebaseMessagingMode != "none"
+def firebaseMessagingVersion = getExtOrDefault("firebaseMessagingVersion")
+
 android {
   namespace "com.sinchpush"
 
@@ -45,6 +51,15 @@ android {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
     buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
+    buildConfigField "boolean", "FCM_AVAILABLE", firebaseMessagingAvailable.toString()
+    // Manifest placeholder gating the SinchPushFirebaseMessagingService.
+    // "true"  -> service is registered and active (optional/required modes).
+    // "false" -> service disabled (none mode, or host has its own service).
+    manifestPlaceholders.SinchPush_fcmServiceEnabled = firebaseMessagingAvailable.toString()
+    // Ship proguard rules to consumers. Required in AGP 8.6+ which removed
+    // the top-level android.consumerProguardFiles DSL — must live on
+    // defaultConfig (BaseFlavor).
+    consumerProguardFiles "consumer-rules.pro"
   }
 
   buildFeatures {
@@ -57,6 +72,11 @@ android {
         java.srcDirs += ["src/newarch"]
       } else {
         java.srcDirs += ["src/oldarch"]
+      }
+      // src/fcm holds all code that directly references Firebase Messaging.
+      // Excluded in "none" mode so the module compiles without firebase-messaging.
+      if (firebaseMessagingAvailable) {
+        java.srcDirs += ["src/fcm"]
       }
     }
   }
@@ -74,6 +94,19 @@ repositories {
 
 dependencies {
   implementation "com.facebook.react:react-native:+"
+
+  if (firebaseMessagingMode == "required") {
+    // Host wants the library to bring in firebase-messaging. The host still must
+    // supply google-services.json and apply the Google Services plugin.
+    implementation "com.google.firebase:firebase-messaging:${firebaseMessagingVersion}"
+  } else if (firebaseMessagingMode == "optional" || firebaseMessagingMode == null) {
+    // compileOnly: the FCM classes are available at library-compile time so the
+    // SinchPushFirebaseMessagingService + reflection-based FcmProvider compile,
+    // but firebase-messaging is NOT bundled. It activates at runtime only when
+    // the host app already includes firebase-messaging.
+    compileOnly "com.google.firebase:firebase-messaging:${firebaseMessagingVersion}"
+  }
+  // "none" -> no Firebase dependency; service source-set is excluded above.
 
   // --- Sinch native SDK ---------------------------------------------------
   // Uncomment and pin the version you integrate against.

@@ -9,33 +9,13 @@ import {
   View,
 } from 'react-native';
 import SinchPush from '@sinch/react-native-sinch-push';
+import CryptoJS from 'crypto-js';
 
 const MAX_LOG_ROWS = 50;
-const DEV_SIGN_SECRET = 'example-dev-only-do-not-use-in-prod';
+const DEV_SIGN_SECRET = 'e2';
 
-async function hmacSha512Hex(message, secret) {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(secret),
-    { name: 'HMAC', hash: 'SHA-512' },
-    false,
-    ['sign'],
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
-  return Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function randomHex(byteLen) {
-  const bytes = new Uint8Array(byteLen);
-  for (let i = 0; i < byteLen; i++) {
-    bytes[i] = Math.floor(Math.random() * 256);
-  }
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+function hmacSha512Hex(message, secret) {
+  return CryptoJS.HmacSHA512(message, secret).toString(CryptoJS.enc.Hex);
 }
 
 function inAppSummary(msg) {
@@ -56,9 +36,15 @@ function inAppSummary(msg) {
 }
 
 export default function DemoScreen() {
-  const [projectID, setProjectID] = useState('example-project-id');
-  const [clientID, setClientID] = useState('example-client-id');
-  const [configID, setConfigID] = useState('example-config-id');
+  const [projectID, setProjectID] = useState(
+    '490b5866-4b87-45d9-96f6-7ea31fc1b9b2',
+  );
+  const [clientID, setClientID] = useState('01HDMA7S9F1W5A8ZMW1M2VQBYA');
+  const [configID, setConfigID] = useState(
+    Platform.OS == 'ios'
+      ? '01M0CPNH8634XTZ1GK3NT2E3CR'
+      : '01M0D1PDXZFF1B3TBS77R0558Q',
+  );
   const [env, setEnv] = useState('eu1');
   const [customPush, setCustomPush] = useState('');
   const [customChat, setCustomChat] = useState('');
@@ -94,10 +80,15 @@ export default function DemoScreen() {
         projectID,
         clientID,
         configID,
-        env,
+        env: env === 'staging' ? 'custom' : env,
         enableLogging: __DEV__,
       };
-      if (env === 'custom') {
+      if (env === 'staging') {
+        config.customPushApiUrl =
+          'https://grpc-web.sinch-push.staging.sinch.com';
+        config.customChatApiUrl =
+          'https://grpc-web.sinch-chat.unauth.staging.sinch.com';
+      } else if (env === 'custom') {
         config.customPushApiUrl = customPush;
         config.customChatApiUrl = customChat;
       }
@@ -136,20 +127,13 @@ export default function DemoScreen() {
     }
   }, [projectID, clientID, configID, env, customPush, customChat, info, pushLog]);
 
-  const handleSetDeviceToken = useCallback(() => {
-    const token = randomHex(32);
-    SinchPush.setDeviceToken(token);
-    setDeviceToken({ token, type: Platform.OS === 'ios' ? 'apns' : 'fcm' });
-    info(`setDeviceToken (synthetic): ${token.slice(0, 12)}…`);
-  }, [info]);
-
   const handleSetIdentity = useCallback(async () => {
     if (!initialized) {
       info('initialize first');
       return;
     }
     try {
-      const signedUserID = await hmacSha512Hex(userID, DEV_SIGN_SECRET);
+      const signedUserID = hmacSha512Hex(userID, DEV_SIGN_SECRET);
       await SinchPush.setIdentity({ userID, signedUserID });
       setIdentity(userID);
       info(`setIdentity: ${userID}`);
@@ -164,7 +148,7 @@ export default function DemoScreen() {
       return;
     }
     try {
-      const signedUserID = await hmacSha512Hex(userID, DEV_SIGN_SECRET);
+      const signedUserID = hmacSha512Hex(userID, DEV_SIGN_SECRET);
       await SinchPush.removeIdentity({ userID, signedUserID });
       setIdentity(null);
       info('removeIdentity ok');
@@ -173,7 +157,7 @@ export default function DemoScreen() {
     }
   }, [initialized, userID, info]);
 
-  const envs = useMemo(() => ['eu1', 'us1', 'custom'], []);
+  const envs = useMemo(() => ['eu1', 'us1', 'staging', 'custom'], []);
 
   return (
     <ScrollView
@@ -236,7 +220,6 @@ export default function DemoScreen() {
 
       <View style={styles.btnGroup}>
         <Button title="Initialize" onPress={handleInitialize} primary />
-        <Button title="Set Device Token (random)" onPress={handleSetDeviceToken} />
         <Button title="Set Identity" onPress={handleSetIdentity} />
         <Button title="Remove Identity" onPress={handleRemoveIdentity} />
       </View>

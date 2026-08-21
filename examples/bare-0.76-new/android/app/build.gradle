@@ -77,13 +77,18 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.sinchpush.examples.bare076new"
+    namespace "com.bare076new"
     defaultConfig {
-        applicationId "com.sinchpush.examples.bare076new"
+        applicationId "com.bare076new"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging false
+        }
     }
     signingConfigs {
         debug {

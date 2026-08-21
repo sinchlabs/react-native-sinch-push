@@ -1,5 +1,9 @@
 # @sinch/react-native-sinch-push
 
+> **Getting credentials:** to obtain your Sinch Push credentials
+> (`projectID`, `clientID`, `configID`), sign in to the Sinch Build Dashboard at
+> **https://dashboard.sinch.com/** and create/configure a Push configuration.
+
 React Native SDK for Sinch Push. Registers identities and receives pushes using
 Connect-RPC, with native APNs (iOS) and Firebase Cloud Messaging (Android)
 device-token capture. Supports both the old (bridge) and new (TurboModule)
@@ -73,40 +77,110 @@ func application(
 
 ### Android
 
-The library does **not** ship with a built-in push service. You provide the
-device token yourself via `SinchPush.setDeviceToken(token)`.
+The library ships with an **auto-detected** Firebase Cloud Messaging (FCM)
+integration. If your app already uses FCM, no `FirebaseMessagingService`,
+`MainApplication` edits, or manual `setDeviceToken()` calls are required — the
+SDK detects FCM at runtime, captures the device token, refreshes it on
+rotation, and delivers background / terminated pushes to your JavaScript.
 
-If you use Firebase Cloud Messaging:
+#### Required one-time Firebase setup (cannot be automated)
 
-1. Add Firebase to your app: place `google-services.json` in `android/app/` and
-   apply the Google Services Gradle plugin (`com.google.gms.google-services`) in
-   your app module.
-2. Declare a `FirebaseMessagingService` in your app's `AndroidManifest.xml` that
-   forwards the token and inbound messages to the SDK:
+These two steps remain the host app's responsibility because a library AAR
+cannot apply the Google Services Gradle plugin or ship `google-services.json`:
 
-```kotlin
-import com.google.firebase.messaging.FirebaseMessagingService
-import com.google.firebase.messaging.RemoteMessage
-import com.sinchpush.SinchPushEmitter
+1. Place `google-services.json` in `android/app/`.
+2. Apply the Google Services plugin in `android/app/build.gradle`:
 
-class MyFirebaseMessagingService : FirebaseMessagingService() {
+   ```gradle
+   apply plugin: 'com.android.application'
+   apply plugin: 'org.jetbrains.kotlin.android'
+   apply plugin: 'com.google.gms.google-services'  // <-- add this
+   ```
 
-  override fun onNewToken(token: String) {
-    super.onNewToken(token)
-    SinchPushEmitter.onNewToken(token)
-  }
+   And add the classpath in `android/build.gradle`:
 
-  override fun onMessageReceived(message: RemoteMessage) {
-    super.onMessageReceived(message)
-    val notification = message.notification
-    SinchPushEmitter.onMessage(
-      data = message.data,
-      title = notification?.title,
-      body = notification?.body,
-    )
-  }
+   ```gradle
+   buildscript {
+     dependencies {
+       classpath 'com.google.gms:google-services:4.4.2'
+     }
+   }
+   ```
+
+#### FCM integration mode
+
+The library reads `SinchPush_firebaseMessaging` from the host's root project
+`ext` (or its own `android/gradle.properties` as fallback). Default: `optional`.
+
+| Mode      | Dependency on `firebase-messaging` | Manifest service | Behaviour |
+| --------- | ---------------------------------- | ---------------- | --------- |
+| `optional` (default) | `compileOnly` — only resolves if host already includes FCM | Registered (gated by placeholder) | Auto-activates when host has FCM; silent no-op when it doesn't |
+| `required` | `implementation` (library pulls FCM in) | Registered | For hosts that want the library to bring FCM |
+| `none`     | Omitted | Disabled | Use `SinchPush.setDeviceToken()` yourself; the library will not touch FCM |
+
+Set the mode in your `android/build.gradle`:
+
+```gradle
+ext {
+  // pick one
+  SinchPush_firebaseMessaging = 'optional'  // default
+  // SinchPush_firebaseMessaging = 'required'
+  // SinchPush_firebaseMessaging = 'none'
 }
 ```
+
+Hosts that already declare their own `FirebaseMessagingService` (for analytics,
+notification posting, etc.) should set the mode to `none` to prevent double
+handling — both services would otherwise receive every `MESSAGING_EVENT`.
+
+#### Notification permission & display
+
+On Android 13+ (`POST_NOTIFICATIONS`) and iOS, the SDK requests the relevant
+runtime permission the first time `registerForToken()` is called. You don't
+need to call anything else.
+
+Once granted, pushes received while the app is in the foreground are still
+posted to the system tray:
+
+- **Android** — `SinchPushFirebaseMessagingService.onMessageReceived` builds a
+  `NotificationCompat` notification on the `com.sinch.push.default` channel
+  and posts it via `NotificationManagerCompat`. The title / body are sourced
+  from the FCM `notification` payload first, falling back to common
+  data-payload keys (`title`, `body`, `text`, `message`) and finally the app
+  label.
+- **iOS** — the SDK installs itself as the `UNUserNotificationCenter` delegate
+  and returns `.banner | .list | .sound` from
+  `willPresentNotification:withCompletionHandler:`. No extra code is required
+  in your `AppDelegate`.
+
+To use a different notification channel, icon, or tap behaviour, replace
+`SinchPush_firebaseMessaging = 'none'` and provide your own
+`FirebaseMessagingService` that calls `SinchPushEmitter.onMessage(...)`
+directly.
+
+#### What the library does automatically
+
+- Detects FCM at runtime via reflection. No-op if absent.
+- Captures the device token via `FirebaseMessaging.getInstance().token`,
+  forwarding every value to `SinchPushEmitter`.
+- Receives pushes in the background / terminated state via a manifest-declared
+  `SinchPushFirebaseMessagingService` that calls `SinchPushEmitter.onMessage(...)`.
+- Posts a system notification for every received push so the message is
+  visible in the tray even while the app is in the foreground. When the app
+  is backgrounded or terminated and the server payload includes a
+  `notification` field, the system displays the push itself; calling
+  `show` again from the service is harmless (same id + tag).
+- Requests the `POST_NOTIFICATIONS` runtime permission on Android 13+ when
+  `registerForToken()` runs.
+- On `initialize()`, if a stored identity already exists in Keychain, watches
+  the device-token stream and re-issues `Subscribe` whenever the token changes
+  (FCM tokens rotate). Re-sending is skipped when the token hasn't changed.
+
+If your app does not use FCM (e.g. HMS Push Kit), call
+`SinchPush.setDeviceToken(token)` once the host obtains a token from your
+provider, and forward inbound messages to `SinchPushEmitter.onMessage(...)`
+yourself. Set `SinchPush_firebaseMessaging = 'none'` to disable the
+manifest-merged FCM service.
 
 Autolinking registers the native package; no manual `MainApplication` changes
 are needed on RN 0.60+.
@@ -126,12 +200,15 @@ async function bootstrap() {
     enableLogging: __DEV__,
   });
 
-  // 2. Provide a device token (required on Android, optional on iOS)
-  //    On iOS the APNs token is captured automatically; on Android you
-  //    must obtain one from your push service (FCM, HMS, etc.).
-  SinchPush.setDeviceToken('device-token-from-push-service');
+  // 2. (Optional) The device token is captured automatically:
+  //    - iOS: APNs token via the AppDelegate forwarding hooks.
+  //    - Android: FCM token via reflection-based auto-detection
+  //      (requires google-services.json + Google Services plugin; see Android
+  //      setup above).
+  //    If you use a different provider (HMS, OneSignal, etc.) obtain the
+  //    token yourself and call SinchPush.setDeviceToken(token).
 
-  // 3. Device token events (APNs auto-capture on iOS)
+  // 3. Device token events (auto-captured on both platforms)
   const tokenSub = SinchPush.onTokenReceiveHandler((t) => {
     console.log(`${t.type} token:`, t.token);
   });
@@ -159,7 +236,9 @@ async function bootstrap() {
   //    IssueTokenWithSignedUuid({ uuid, uuid_hash }) to mint a JWT,
   //    then Subscribe({ config, token }) with the device token.
   //    The JWT is persisted to Keychain and used as the bearer
-  //    token on subsequent calls.
+  //    token on subsequent calls. The device token is also persisted;
+  //    on subsequent app starts, if the token rotates, Subscribe is
+  //    re-issued automatically.
   await SinchPush.setIdentity({
     userID: 'user-1234',
     signedUserID: '<hmac-sha512-hex-signature>',
@@ -282,15 +361,26 @@ push).
 
 | Method | Description |
 | --- | --- |
-| `initialize(config: SinchPushConfig): Promise<void>` | Initialize the SDK with your Sinch project credentials. Sets up the Connect transport, wires the Keychain-backed token storage, and requests a device token on iOS unless `autoRegisterForToken` is `false`. |
-| `setIdentity(signedIdentity: SignedIdentity): Promise<void>` | Register a signed identity for push delivery on this device. Calls `IssueTokenWithSignedUuid` to mint a JWT, persists it to Keychain, then calls `Subscribe` with the device token using the JWT as the bearer. |
-| `removeIdentity(signedIdentity: SignedIdentity): Promise<void>` | Unregister an identity from this device. Calls `Unsubscribe` (best-effort) and clears the stored JWT from Keychain. |
-| `setDeviceToken(token: string): void` | Provide a device token from any push service. Overrides any natively captured token. Call before `setIdentity()`. |
+| `initialize(config: SinchPushConfig, options?: { deviceTokenStorage?: DeviceTokenStorage }): Promise<void>` | Initialize the SDK with your Sinch project credentials. Sets up the Connect transport, wires the Keychain-backed token storage, and triggers device-token capture on iOS (APNs) and Android (FCM auto-detection) unless `autoRegisterForToken` is `false`. The optional `deviceTokenStorage` lets you replace the Keychain-backed "last sent" tracker with your own implementation (used by the auto-resend feature). |
+| `setIdentity(signedIdentity: SignedIdentity): Promise<void>` | Register a signed identity for push delivery on this device. Calls `IssueTokenWithSignedUuid` to mint a JWT, persists it to Keychain, then calls `Subscribe` with the device token using the JWT as the bearer. Persists the sent device token so future token rotations can be detected. |
+| `removeIdentity(signedIdentity: SignedIdentity): Promise<void>` | Unregister an identity from this device. Calls `Unsubscribe` (best-effort), clears the stored JWT from Keychain, and clears the persisted "last sent" device token. |
+| `setDeviceToken(token: string): void` | Provide a device token from any push service. Overrides any natively captured token. Useful when the host uses a provider the SDK does not auto-detect (e.g. HMS, OneSignal). |
 | `getDeviceToken(): Promise<DeviceToken \| null>` | Latest token (JS-provided or natively captured), or `null`. |
-| `registerForToken(): Promise<void>` | Request a device token (iOS: triggers APNs registration; Android: no-op). |
+| `registerForToken(): Promise<void>` | Request a device token (iOS: triggers APNs registration; Android: re-runs FCM detection). |
 | `onPushReceiveHandler(handler): Subscription` | Subscribe to incoming raw push messages. |
 | `onInAppMessageHandler(handler): Subscription` | Subscribe to typed in-app messages decoded from `protobufPayload`. See the in-app messages section. |
 | `onTokenReceiveHandler(handler): Subscription` | Subscribe to token issue/refresh events. |
+
+### Automatic device-token refresh
+
+Once `initialize()` has been called, the SDK subscribes to native device-token
+events. If a stored identity exists in Keychain (i.e. `setIdentity()` was
+called in a previous session) **and** the new device token differs from the
+last one persisted to Keychain, the SDK automatically issues a fresh
+`Subscribe` request. If the token hasn't changed, nothing is sent.
+
+The last-sent token is cleared by `removeIdentity()` so a re-login on the same
+device re-subscribes cleanly.
 
 ### Configuration
 
@@ -375,6 +465,12 @@ type InAppMessage =
 
 interface Subscription {
   remove(): void;
+}
+
+interface DeviceTokenStorage {
+  readLastSent(): Promise<string | null>;
+  writeLastSent(token: string): Promise<void>;
+  clearLastSent(): Promise<void>;
 }
 ```
 

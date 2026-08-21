@@ -2,6 +2,7 @@
 
 #import <React/RCTEventEmitter.h>
 #import <React/RCTLog.h>
+#import <UIKit/UIKit.h>
 #import <UserNotifications/UserNotifications.h>
 
 static NSString *const kSinchPushTokenNotification = @"SinchPushTokenNotification";
@@ -11,6 +12,9 @@ static NSString *const kEventTokenReceived = @"SinchPush:onTokenReceived";
 static NSString *const kEventPushReceived = @"SinchPush:onPushReceived";
 
 static NSDictionary *gLatestToken = nil;
+
+@interface SinchPush () <UNUserNotificationCenterDelegate>
+@end
 
 @implementation SinchPush {
   BOOL _hasListeners;
@@ -32,6 +36,12 @@ RCT_EXPORT_MODULE()
                selector:@selector(handleMessageNotification:)
                    name:kSinchPushMessageNotification
                  object:nil];
+    // Become the UNUserNotificationCenter delegate so foreground pushes are
+    // routed through `willPresentNotification:withCompletionHandler:` below.
+    // setDelegate: must be called on the main thread.
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [UNUserNotificationCenter currentNotificationCenter].delegate = self;
+    });
   }
   return self;
 }
@@ -108,6 +118,31 @@ RCT_EXPORT_METHOD(registerForToken:(RCTPromiseResolveBlock)resolve
   [self sendEventWithName:kEventPushReceived body:userInfo];
 }
 
+#pragma mark - UNUserNotificationCenterDelegate
+
+// Called when a push arrives while the app is in the foreground. Returning
+// presentation options causes the system to display the banner / list entry
+// even though the app is active.
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+       willPresentNotification:(UNNotification *)notification
+         withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler {
+  NSDictionary *userInfo = notification.request.content.userInfo;
+  if (userInfo) {
+    NSDictionary *message = [self messageDictFromUserInfo:userInfo source:@"apns"];
+    if (_hasListeners) {
+      [self sendEventWithName:kEventPushReceived body:message];
+    }
+  }
+  if (@available(iOS 14.0, *)) {
+    completionHandler(UNNotificationPresentationOptionBanner |
+                      UNNotificationPresentationOptionList |
+                      UNNotificationPresentationOptionSound);
+  } else {
+    completionHandler(UNNotificationPresentationOptionAlert |
+                      UNNotificationPresentationOptionSound);
+  }
+}
+
 #pragma mark - App delegate forwarding
 
 + (void)didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
@@ -128,6 +163,15 @@ RCT_EXPORT_METHOD(registerForToken:(RCTPromiseResolveBlock)resolve
 }
 
 + (void)didReceiveRemoteNotification:(NSDictionary *)userInfo {
+  NSDictionary *message = [self messageDictFromUserInfo:userInfo source:@"apns"];
+  [[NSNotificationCenter defaultCenter] postNotificationName:kSinchPushMessageNotification
+                                                      object:nil
+                                                    userInfo:message];
+}
+
+#pragma mark - Helpers
+
++ (NSDictionary *)messageDictFromUserInfo:(NSDictionary *)userInfo source:(NSString *)source {
   NSMutableDictionary *data = [NSMutableDictionary dictionary];
   for (id key in userInfo) {
     if ([key isKindOfClass:[NSString class]] && ![key isEqualToString:@"aps"]) {
@@ -141,7 +185,7 @@ RCT_EXPORT_METHOD(registerForToken:(RCTPromiseResolveBlock)resolve
 
   NSMutableDictionary *message = [NSMutableDictionary dictionary];
   message[@"data"] = data;
-  message[@"source"] = @"apns";
+  message[@"source"] = source;
 
   if ([alert isKindOfClass:[NSDictionary class]]) {
     NSString *title = alert[@"title"];
@@ -157,9 +201,11 @@ RCT_EXPORT_METHOD(registerForToken:(RCTPromiseResolveBlock)resolve
     message[@"identity"] = identity;
   }
 
-  [[NSNotificationCenter defaultCenter] postNotificationName:kSinchPushMessageNotification
-                                                      object:nil
-                                                    userInfo:message];
+  return message;
+}
+
+- (NSDictionary *)messageDictFromUserInfo:(NSDictionary *)userInfo source:(NSString *)source {
+  return [[self class] messageDictFromUserInfo:userInfo source:source];
 }
 
 @end
