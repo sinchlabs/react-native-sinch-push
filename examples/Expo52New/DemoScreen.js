@@ -36,15 +36,9 @@ function inAppSummary(msg) {
 }
 
 export default function DemoScreen() {
-  const [projectID, setProjectID] = useState(
-    '490b5866-4b87-45d9-96f6-7ea31fc1b9b2',
-  );
-  const [clientID, setClientID] = useState('01HDMA7S9F1W5A8ZMW1M2VQBYA');
-  const [configID, setConfigID] = useState(
-    Platform.OS == 'ios'
-      ? '01M0CPNH8634XTZ1GK3NT2E3CR'
-      : '01M0D1PDXZFF1B3TBS77R0558Q',
-  );
+  const [projectID, setProjectID] = useState('');
+  const [clientID, setClientID] = useState('');
+  const [configID, setConfigID] = useState('');
   const [env, setEnv] = useState('eu1');
   const [customPush, setCustomPush] = useState('');
   const [customChat, setCustomChat] = useState('');

@@ -1,3 +1,14 @@
+# Secrets / credentials (never commit)
+**/google-services.json
+**/GoogleService-Info.plist
+**/.env
+**/.env.*
+!**/.env.example
+*.jks
+*.keystore
+!**/debug.keystore
+**/local.properties
+
 # OSX
 .DS_Store
 
