@@ -1,0 +1,77 @@
+# Resolve react_native_pods.rb with node to allow for hoisting
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
+
+# Config.xcconfig (team, bundle id, App Group) is git-ignored: create it from the
+# example on first run. The Xcode project reads it at project level, so it is not
+# touched by `pod install`.
+require 'fileutils'
+config_xcconfig = File.join(__dir__, 'Config.xcconfig')
+unless File.exist?(config_xcconfig)
+  FileUtils.cp(File.join(__dir__, 'Config.example.xcconfig'), config_xcconfig)
+  Pod::UI.puts 'Created ios/Config.xcconfig from Config.example.xcconfig - edit it before building'.yellow
+end
+
+platform :ios, min_ios_version_supported
+prepare_react_native_project!
+
+linkage = ENV['USE_FRAMEWORKS']
+if linkage != nil
+  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  use_frameworks! :linkage => linkage.to_sym
+end
+
+target 'Bare076' do
+  config = use_native_modules!
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  target 'Bare076Tests' do
+    inherit! :complete
+    # Pods for testing
+  end
+
+  post_install do |installer|
+    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+      # :ccache_enabled => true
+    )
+
+    # Recent Xcodes reject deployment targets below 15.0; some pods (e.g.
+    # SwiftProtobuf) still declare older ones.
+    # fmt 11.0.2 (pinned by RN 0.76) fails on Xcode 16.3+/27 clang: its
+    # unconditional consteval detection in base.h. Force it off.
+    fmt_base = File.join(installer.sandbox.root.to_s, 'fmt/include/fmt/base.h')
+    if File.exist?(fmt_base)
+      src = File.read(fmt_base)
+      patched = src.gsub(/(#\s*define FMT_USE_CONSTEVAL) 1\b/, '\\1 0')
+      if patched != src
+        File.chmod(0644, fmt_base)
+        File.write(fmt_base, patched)
+      end
+    end
+
+    installer.pods_project.targets.each do |t|
+      t.build_configurations.each do |c|
+        if c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 15.0
+          c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+        end
+      end
+    end
+  end
+end
+
+# Notification Service Extension: only the SDK's extension pod, never React.
+target 'NotificationService' do
+  pod 'SinchPushNotificationExtension', :path => '../../..'
+end

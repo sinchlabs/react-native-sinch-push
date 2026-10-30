@@ -1,0 +1,20 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+            Channel for notification messages the system displays itself (app
+            backgrounded or killed): FCM uses this id instead of its fallback
+            "Miscellaneous" channel. SinchPushFirebaseMessagingService creates the
+            channel before FCM displays anything. Merged only with the FCM service
+            enabled and SinchPush_defaultNotificationChannel not "false": a host
+            that declares its own channel (or another library that does) would
+            otherwise hit a manifest-merger conflict. A host that wants to keep this
+            library's flag on but override the id declares the same <meta-data>
+            with tools:replace="android:value".
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="com.sinch.push.default" />
+    </application>
+
+</manifest>

@@ -1,0 +1,22 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        The push socket relay (opt-in). Merged into the library manifest only when
+        SinchPush_relay=true, so an integrator who does not use the relay ships no
+        foreground-service permission and no foreground service (Play's
+        foreground-service declaration then does not apply to the app).
+        src/relay-channel/AndroidManifest.xml is this file plus the default
+        notification channel meta-data; keep the two in step.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <application>
+        <service
+            android:name=".socket.SinchPushSocketService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"
+            android:stopWithTask="false" />
+    </application>
+
+</manifest>

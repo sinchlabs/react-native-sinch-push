@@ -1,0 +1,66 @@
+// Standalone Gradle build for the library (RN-034).
+//
+// Host apps never read this file: they add `project(':react-native-sinch-push')`
+// to their *own* settings.gradle, which pulls in the React Native Gradle plugin.
+// This file exists so the library can be built and tested on its own:
+//
+//     cd android && ./gradlew assembleDebug testDebugUnitTest
+//
+// The root project *is* the library module here, so the tasks are unprefixed.
+//
+// React Native dependency resolution is the one thing a standalone build has to
+// reproduce. Since 0.71 the Android artifacts ship on Maven Central as
+// `com.facebook.react:react-android` and `com.facebook.react:react-native` was
+// voided (facebook/react-native#35210). android/build.gradle still asks for the
+// old coordinate, which is what a host app expects, and the React Native Gradle
+// plugin substitutes it (DependencyUtils.configureDependencies). Without that
+// plugin the `+` would resolve to the newest release under the dead coordinate
+// (0.71.0-rc.0) instead of the version in node_modules.
+
+import java.util.Properties
+
+pluginManagement {
+  repositories {
+    gradlePluginPortal()
+    google()
+    mavenCentral()
+  }
+}
+
+// The version the installed react-native package publishes as. Read from the
+// same file the React Native Gradle plugin reads so the two cannot drift;
+// override with -PreactNativeAndroidVersion=<x> when node_modules is absent.
+def rnProperties = new Properties()
+def rnPropertiesFile = file('../node_modules/react-native/ReactAndroid/gradle.properties')
+if (rnPropertiesFile.exists()) {
+  rnPropertiesFile.withInputStream { rnProperties.load(it) }
+}
+def reactNativeAndroidVersion = settings.hasProperty('reactNativeAndroidVersion')
+  ? settings.ext.reactNativeAndroidVersion
+  : rnProperties.getProperty('VERSION_NAME')
+
+if (!reactNativeAndroidVersion) {
+  throw new GradleException(
+    "Could not read the React Native version from ${rnPropertiesFile.absolutePath}. " +
+      "Run `npm install` in the repository root, or pass " +
+      "-PreactNativeAndroidVersion=<x.y.z> explicitly."
+  )
+}
+
+gradle.beforeProject { project ->
+  project.configurations.all { configuration ->
+    configuration.resolutionStrategy.dependencySubstitution {
+      substitute module('com.facebook.react:react-native') using module(
+        "com.facebook.react:react-android:${reactNativeAndroidVersion}"
+      ) because 'the react-native artifact was voided in favour of react-android (facebook/react-native#35210)'
+      substitute module('com.facebook.react:hermes-engine') using module(
+        "com.facebook.react:hermes-android:${reactNativeAndroidVersion}"
+      ) because 'the hermes-engine artifact was voided in favour of hermes-android (facebook/react-native#35210)'
+    }
+    configuration.resolutionStrategy.force(
+      "com.facebook.react:react-android:${reactNativeAndroidVersion}"
+    )
+  }
+}
+
+rootProject.name = 'react-native-sinch-push'

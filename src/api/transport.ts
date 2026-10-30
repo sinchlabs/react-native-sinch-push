@@ -31,6 +31,44 @@ type AnyFn = (
   req: UnaryRequest | StreamRequest
 ) => Promise<UnaryResponse | StreamResponse>;
 
+const EU1_RELAY_WS_URL = 'wss://relay.sinch-push.prod.sinch.com/ws';
+const US1_RELAY_WS_URL = 'wss://relay.sinch-push.us1.prod.sinch.com/ws';
+
+// Per-region relay WebSocket URLs (see `resolveWsUrl`). The production ingress
+// may not route `GET /ws` to the relay yet; until it does the native client
+// reconnects with backoff while FCM / APNs keep delivering, and a host opts out
+// with `socket.enabled: false`.
+export const RELAY_WS_URLS: Record<'eu1' | 'us1', string> = {
+  eu1: EU1_RELAY_WS_URL,
+  us1: US1_RELAY_WS_URL,
+};
+
+// The relay of an `env: 'custom'` config, derived from the host of its
+// `customPushApiUrl` (lowercase). Mirrors the iOS and Android SDKs.
+const RELAY_WS_URL_BY_PUSH_HOST: Record<string, string> = {
+  'grpc.sinch-push.prod.sinch.com': EU1_RELAY_WS_URL,
+  'grpc.sinch-push.us1.prod.sinch.com': US1_RELAY_WS_URL,
+};
+
+/** Host of an absolute URL, as written: no scheme, userinfo or port. */
+function hostOf(url: string): string {
+  const withoutScheme = url.trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+  const authority = withoutScheme.split(/[/?#]/, 1)[0] ?? '';
+  const hostPort = authority.slice(authority.lastIndexOf('@') + 1);
+  const host = hostPort.startsWith('[')
+    ? hostPort.slice(0, hostPort.indexOf(']') + 1)
+    : hostPort.split(':', 1)[0] ?? '';
+  return host;
+}
+
+/**
+ * Deadline of a unary call that does not set its own `timeoutMs`. React
+ * Native's networking has no connect/read timeout of its own on Android, so
+ * without one an unreachable host stalls the call (and whatever awaits it, e.g.
+ * `setIdentity`) for the OS's TCP timeout, close to a minute.
+ */
+export const DEFAULT_UNARY_TIMEOUT_MS = 15_000;
+
 const HOSTS = {
   eu1: {
     push: 'https://grpc.sinch-push.prod.sinch.com',
@@ -87,6 +125,84 @@ export function resolveRegion(config: SinchPushConfig): RegionConfig {
     pushBaseUrl: hosts.push,
     chatBaseUrl: hosts.chat,
   };
+}
+
+export type WsUrlErrorCode = 'E_WS_NOT_CONFIGURED' | 'E_WS_INSECURE';
+
+export class WsUrlError extends Error {
+  readonly code: WsUrlErrorCode;
+
+  constructor(code: WsUrlErrorCode, message: string) {
+    super(`${code}: ${message}`);
+    this.name = 'WsUrlError';
+    this.code = code;
+  }
+}
+
+export interface ResolveWsUrlOptions {
+  isDev?: boolean;
+}
+
+declare const __DEV__: boolean | undefined;
+
+/**
+ * Outcome of `resolveWsUrl`: either the URL to connect to, or the reason the
+ * relay is disabled (for the caller to log or surface).
+ */
+export type WsUrlResolution = { url: string } | { disabled: string };
+
+/**
+ * Resolve an explicit/region URL, or explain why unavailable. Validate supplied
+ * schemes. Native enforces the persisted relay switch.
+ *
+ * The URL is `socket.customWsUrl` when given, else the region's relay
+ * (`RELAY_WS_URLS`), else — for `env: 'custom'` — the relay derived from the
+ * host of `customPushApiUrl` when that is a production push host. Other
+ * environments pass `socket.customWsUrl`.
+ *
+ * Returns `{ disabled: reason }` — not an error — when there is nothing to
+ * connect to: an `env: 'custom'` push host without a relay and without
+ * `socket.customWsUrl`. A URL
+ * that is present but unusable (wrong scheme, insecure `ws://`) throws
+ * `WsUrlError`.
+ */
+export function resolveWsUrl(
+  config: SinchPushConfig,
+  opts?: ResolveWsUrlOptions
+): WsUrlResolution {
+  const isDev = opts?.isDev ?? (typeof __DEV__ !== 'undefined' && __DEV__);
+  let url = config.socket?.customWsUrl;
+  if (!url) {
+    if (config.env === 'custom') {
+      // An explicit `customWsUrl` always wins over the derived one.
+      const pushHost = hostOf(config.customPushApiUrl ?? '');
+      const derived = RELAY_WS_URL_BY_PUSH_HOST[pushHost.toLowerCase()];
+      if (!derived) {
+        return { disabled: `no relay host for push host ${pushHost}` };
+      }
+      url = derived;
+    } else {
+      url = RELAY_WS_URLS[config.env];
+    }
+  }
+  const lowered = url.toLowerCase();
+  if (!lowered.startsWith('ws://') && !lowered.startsWith('wss://')) {
+    throw new WsUrlError(
+      'E_WS_NOT_CONFIGURED',
+      `WebSocket URL must use the ws:// or wss:// scheme (got "${url}")`
+    );
+  }
+  if (
+    lowered.startsWith('ws://') &&
+    !isDev &&
+    config.socket?.allowInsecureWs !== true
+  ) {
+    throw new WsUrlError(
+      'E_WS_INSECURE',
+      'ws:// URLs are only allowed in dev (__DEV__) or with socket.allowInsecureWs'
+    );
+  }
+  return { url };
 }
 
 const authInterceptor: Interceptor = (next) => async (req) => {
@@ -192,7 +308,7 @@ export function buildTransport(opts: TransportOptions): Transport {
     async unary<I extends DescMessage, O extends DescMessage>(
       method: DescMethodUnary<I, O>,
       signal: AbortSignal | undefined,
-      _timeoutMs: number | undefined,
+      timeoutMs: number | undefined,
       header: HeadersInit | undefined,
       input: MessageInitShape<I>,
       contextValues?: ContextValues,
@@ -203,12 +319,28 @@ export function buildTransport(opts: TransportOptions): Transport {
       reqHeader.set('accept', contentType);
       reqHeader.set('x-grpc-web', '1');
 
+      // One AbortController for the call: the caller's signal and the deadline
+      // both abort it, and both also reject on their own so a fetch that
+      // ignores the signal cannot outlive them.
+      const deadlineMs =
+        timeoutMs !== undefined && timeoutMs > 0
+          ? timeoutMs
+          : DEFAULT_UNARY_TIMEOUT_MS;
+      const controller = new AbortController();
+      let rejectCanceled: ((e: ConnectError) => void) | undefined;
+      const onCallerAbort = () => {
+        controller.abort();
+        rejectCanceled?.(new ConnectError('the call was canceled', Code.Canceled));
+      };
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let timedOut = false;
+
       const request: UnaryRequest<I, O> = {
         stream: false,
         service: method.parent,
         requestMethod: 'POST',
         url: `${baseUrl}/${method.parent.typeName}/${method.name}`,
-        signal: signal ?? new AbortController().signal,
+        signal: controller.signal,
         header: reqHeader,
         contextValues: contextValues ?? createContextValues(),
         method,
@@ -282,11 +414,46 @@ export function buildTransport(opts: TransportOptions): Transport {
         return response;
       };
 
-      const chain = interceptors.reduceRight<AnyFn>(
-        (next, interceptor) => interceptor(next),
-        invoke
-      );
-      return (await chain(request)) as UnaryResponse<I, O>;
+      try {
+        const chain = interceptors.reduceRight<AnyFn>(
+          (next, interceptor) => interceptor(next),
+          invoke
+        );
+        const canceled = new Promise<never>((_, reject) => {
+          rejectCanceled = reject;
+        });
+        const deadline = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            timedOut = true;
+            controller.abort();
+            reject(
+              new ConnectError(
+                `${method.name} timed out after ${deadlineMs}ms`,
+                Code.DeadlineExceeded
+              )
+            );
+          }, deadlineMs);
+        });
+        if (signal?.aborted) {
+          onCallerAbort();
+        } else {
+          signal?.addEventListener('abort', onCallerAbort);
+        }
+        return (await Promise.race([
+          chain(request),
+          deadline,
+          canceled,
+        ])) as UnaryResponse<I, O>;
+      } catch (e) {
+        if (signal?.aborted && !timedOut) {
+          // fetch's own AbortError says nothing a caller can match on.
+          throw new ConnectError('the call was canceled', Code.Canceled);
+        }
+        throw e;
+      } finally {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', onCallerAbort);
+      }
     },
 
     async stream<I extends DescMessage, O extends DescMessage>(

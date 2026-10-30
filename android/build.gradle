@@ -1,12 +1,4 @@
 buildscript {
-  ext.getExtOrDefault = { name ->
-    return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["SinchPush_" + name]
-  }
-
-  ext.getExtOrIntegerDefault = { name ->
-    return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["SinchPush_" + name]).toInteger()
-  }
-
   ext.kotlinVersion = rootProject.ext.has("kotlinVersion") ? rootProject.ext.get("kotlinVersion") : "1.9.22"
   ext.androidGradlePluginVersion = rootProject.ext.has("androidGradlePluginVersion") ? rootProject.ext.get("androidGradlePluginVersion") : "8.3.0"
 
@@ -32,15 +24,96 @@ if (isNewArchitectureEnabled()) {
   apply plugin: "com.facebook.react"
 }
 
-def getExtOrIntegerDefault(name) {
-  return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["SinchPush_" + name]).toInteger()
+// Every library option resolves the same way, first hit wins:
+//   1. rootProject.ext.SinchPush_<name>   (host's root build.gradle ext block)
+//   2. rootProject.findProperty("SinchPush_<name>")  (host's android/gradle.properties, -P)
+//   3. project.findProperty("SinchPush_<name>")
+//   4. rootProject.ext.<name>             (the unprefixed form, e.g. `compileSdkVersion`;
+//                                          after the prefixed forms: every RN host sets
+//                                          `ext.compileSdkVersion`, which must not mask an
+//                                          explicit SinchPush_ setting)
+//   5. the library default in `ext.sinchPushDefaults` below.
+// The defaults live here and not in this module's gradle.properties: Gradle loads
+// a subproject's gradle.properties as project properties, which would shadow the
+// host's own values at (4). Both the prefixed and the unprefixed form work for
+// every option in rootProject.ext, `relay` and `defaultNotificationChannel`
+// included; gradle.properties and -P take the prefixed form only.
+ext.sinchPushDefaults = [
+  compileSdkVersion          : "34",
+  minSdkVersion              : "21",
+  targetSdkVersion           : "34",
+  // FCM integration mode:
+  //   optional (default) - compileOnly firebase-messaging; auto-activates when the
+  //                        host already includes FCM (no FCM service in the app ->
+  //                        runtime no-op via reflection).
+  //   required           - implementation firebase-messaging (the host still needs
+  //                        google-services.json and the Google Services plugin).
+  //   none               - no Firebase dependency and no manifest service; callers
+  //                        obtain a token themselves and pass it via
+  //                        SinchPush.setDeviceToken().
+  firebaseMessaging          : "optional",
+  firebaseMessagingVersion   : "24.1.0",
+  // Push socket relay: opt-in. "true" merges the foreground service and its
+  // permissions (src/relay/AndroidManifest.xml).
+  relay                      : "false",
+  // "true" declares com.google.firebase.messaging.default_notification_channel_id
+  // (only with the FCM service enabled); "false" leaves it to the host.
+  defaultNotificationChannel : "true",
+  // Dependencies the library uses directly, declared rather than inherited from
+  // react-android's transitive graph (RN-030 gradle hygiene).
+  okhttpVersion              : "4.12.0",
+  androidxCoreVersion        : "1.13.1",
+  // Square Wire runtime for the generated socket messages (src/main/wire). Must
+  // stay equal to wireVersion in scripts/wire/gradle.properties: the compiler that
+  // generated those sources is pinned to the same line. 5.0.0 is the newest
+  // release whose runtime is consumable by Kotlin 1.9.x - see the comment above
+  // `wire-runtime` below for the evidence.
+  wireVersion                : "5.0.0",
+]
+
+def getExtOrDefault(String name) {
+  def prefixed = "SinchPush_" + name
+  if (rootProject.ext.has(prefixed)) return rootProject.ext.get(prefixed)
+  def fromRoot = rootProject.findProperty(prefixed)
+  if (fromRoot != null) return fromRoot
+  def fromProject = project.findProperty(prefixed)
+  if (fromProject != null) return fromProject
+  if (rootProject.ext.has(name)) return rootProject.ext.get(name)
+  return project.ext.sinchPushDefaults[name]
 }
 
-// FCM integration mode. Hosts override via rootProject.ext.SinchPush_firebaseMessaging
-// ("optional" | "required" | "none"). The library falls back to gradle.properties.
-def firebaseMessagingMode = getExtOrDefault("firebaseMessaging")
+def getExtOrIntegerDefault(String name) {
+  return getExtOrDefault(name).toString().toInteger()
+}
+
+// A value outside `allowed` would silently match no branch below (e.g. `Required`
+// leaves FCM_AVAILABLE true with no firebase-messaging dependency), so fail early.
+def getExtOrChoice(String name, List<String> allowed) {
+  def value = getExtOrDefault(name).toString().trim()
+  if (!allowed.contains(value)) {
+    throw new GradleException("Invalid value '${value}' for SinchPush_${name}: expected one of ${allowed.join(' | ')}.")
+  }
+  return value
+}
+
+def getExtOrBooleanDefault(String name) {
+  return getExtOrChoice(name, ["true", "false"]) == "true"
+}
+
+def firebaseMessagingMode = getExtOrChoice("firebaseMessaging", ["optional", "required", "none"])
 def firebaseMessagingAvailable = firebaseMessagingMode != "none"
 def firebaseMessagingVersion = getExtOrDefault("firebaseMessagingVersion")
+
+// Push socket relay (opt-in, default off). The socket classes compile either way;
+// the flag only decides whether the manifest declares the foreground service + its
+// permissions and whether BuildConfig.RELAY_AVAILABLE lets the relay start.
+def relayAvailable = getExtOrBooleanDefault("relay")
+
+// The notification channel id FCM uses for messages the system displays itself.
+// Only meaningful with the FCM service enabled; a host that declares its own
+// can set SinchPush_defaultNotificationChannel=false (the manifest merger would
+// otherwise report a conflict).
+def defaultNotificationChannel = firebaseMessagingAvailable && getExtOrBooleanDefault("defaultNotificationChannel")
 
 android {
   namespace "com.sinchpush"
@@ -52,6 +125,7 @@ android {
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
     buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
     buildConfigField "boolean", "FCM_AVAILABLE", firebaseMessagingAvailable.toString()
+    buildConfigField "boolean", "RELAY_AVAILABLE", relayAvailable.toString()
     // Manifest placeholder gating the SinchPushFirebaseMessagingService.
     // "true"  -> service is registered and active (optional/required modes).
     // "false" -> service disabled (none mode, or host has its own service).
@@ -73,17 +147,70 @@ android {
       } else {
         java.srcDirs += ["src/oldarch"]
       }
+      // src/wire holds the Square Wire output for websocket.proto +
+      // resources.proto. It is generated at library pack time by
+      // `npm run proto:gen:kotlin` (scripts/wire/build.gradle), gitignored, and
+      // shipped in the npm tarball, because a host app that compiles this
+      // library from source has no protos to generate it from.
+      java.srcDirs += ["src/main/wire"]
       // src/fcm holds all code that directly references Firebase Messaging.
       // Excluded in "none" mode so the module compiles without firebase-messaging.
       if (firebaseMessagingAvailable) {
         java.srcDirs += ["src/fcm"]
       }
     }
+
+    // Optional manifest pieces, merged only when enabled, mirroring the src/fcm
+    // toggle above. A build-type manifest merges into main's, which a conditional
+    // `main.manifest.srcFile` could not do without replacing it, and a source set
+    // takes one manifest, so each combination has its own overlay:
+    //   relay            FOREGROUND_SERVICE permissions + SinchPushSocketService
+    //   channel          default_notification_channel_id meta-data
+    //   relay-channel    both
+    // Keep the three in step.
+    def manifestOverlay = relayAvailable
+      ? (defaultNotificationChannel ? "relay-channel" : "relay")
+      : (defaultNotificationChannel ? "channel" : null)
+    if (manifestOverlay != null) {
+      // Every build type, not just debug/release: hosts may inject their own
+      // (e.g. `staging`), and `configureEach` also covers ones added later.
+      buildTypes.configureEach { buildType ->
+        sourceSets.maybeCreate(buildType.name).manifest.srcFile "src/${manifestOverlay}/AndroidManifest.xml"
+      }
+    }
   }
 
   compileOptions {
-    sourceCompatibility JavaVersion.VERSION_1_8
-    targetCompatibility JavaVersion.VERSION_1_8
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+
+  // Kotlin takes its jvmTarget from the JDK running the build, which AGP rejects
+  // when it differs from the Java target above. 17 is what React Native 0.76's
+  // gradle plugin forces on Java compilation in the host build, so pinning 1.8
+  // here fails there with "Inconsistent JVM-target compatibility". Pinned
+  // rather than left to a toolchain so every host gets the same bytes.
+  kotlinOptions {
+    jvmTarget = "17"
+  }
+
+  // JVM unit tests (android/src/test). `returnDefaultValues` keeps a stray
+  // android.util.Log call from failing a test on "Method ... not mocked";
+  // everything the socket codec touches is plain JVM.
+  testOptions {
+    unitTests {
+      returnDefaultValues = true
+      // The live relay contract (SB-58) binds real ports and takes ~30 s, so it
+      // stays out of testDebugUnitTest unless asked for: `npm run contract:android`
+      // (-PliveRelay) runs only it.
+      all {
+        if (project.hasProperty("liveRelay")) {
+          it.include "**/LiveRelayContractTest*"
+        } else {
+          it.exclude "**/LiveRelayContractTest*"
+        }
+      }
+    }
   }
 }
 
@@ -95,11 +222,37 @@ repositories {
 dependencies {
   implementation "com.facebook.react:react-native:+"
 
+  // Declared explicitly rather than picked up from react-android's transitive
+  // graph: the socket client is written against okhttp3/okio and androidx.core
+  // directly, so relying on another artifact's version choice is what let the
+  // library drift from its own source. Hosts still win — both coordinates are
+  // `implementation`, so a host's own version wins at conflict resolution.
+  implementation "com.squareup.okhttp3:okhttp:${getExtOrDefault('okhttpVersion')}"
+  implementation "androidx.core:core-ktx:${getExtOrDefault('androidxCoreVersion')}"
+
+  // Square Wire: the protobuf runtime for the socket protocol's generated
+  // messages in src/main/wire. `implementation`, not `api` — nothing in this
+  // library's own surface exposes a Wire type, so a host never sees these
+  // classes on its compile classpath.
+  //
+  // Wire 5.0.0 is the newest Wire whose runtime is consumable by Kotlin 1.9.x,
+  // which is what RN 0.76 hosts compile with (the library itself is 1.9.22).
+  // Verified, not assumed: wire-runtime 5.1.0 and every later release are built
+  // with Kotlin 2.x — their class metadata is mv=[2,0,0] and they require
+  // kotlin-stdlib 2.0.x, so a host on Kotlin 1.9.x would either fail to compile
+  // against them or be forced onto a 2.x stdlib. 5.0.0's runtime is mv=[1,9,0]
+  // and asks for kotlin-stdlib 1.9.24; it is the last release on that train
+  // (5.0.0 -> 5.1.0 is exactly where Wire moved to Kotlin 2.x). Its okio 3.9.0
+  // also asks for kotlin-stdlib 1.9.21, so nothing in this dependency pulls a
+  // host's Kotlin forward. Host apps may override the version via
+  // rootProject.ext.SinchPush_wireVersion or -PSinchPush_wireVersion.
+  implementation "com.squareup.wire:wire-runtime:${getExtOrDefault('wireVersion')}"
+
   if (firebaseMessagingMode == "required") {
     // Host wants the library to bring in firebase-messaging. The host still must
     // supply google-services.json and apply the Google Services plugin.
     implementation "com.google.firebase:firebase-messaging:${firebaseMessagingVersion}"
-  } else if (firebaseMessagingMode == "optional" || firebaseMessagingMode == null) {
+  } else if (firebaseMessagingMode == "optional") {
     // compileOnly: the FCM classes are available at library-compile time so the
     // SinchPushFirebaseMessagingService + reflection-based FcmProvider compile,
     // but firebase-messaging is NOT bundled. It activates at runtime only when
@@ -111,4 +264,28 @@ dependencies {
   // --- Sinch native SDK ---------------------------------------------------
   // Uncomment and pin the version you integrate against.
   // implementation "com.sinch.android.sdk:sinch-android-rtc:+"
+
+  // JVM unit tests. See android/src/test and `npm run test:android`.
+  testImplementation "junit:junit:4.13.2"
+}
+
+// The golden-vector suite reads the `relay.dir` system property (or RELAY_DIR in
+// the environment) to find testdata/wire/ws_frames.v1beta1.golden.json in a
+// sinch-push-relay checkout, and skips with a message when it cannot find one.
+// Gradle does not forward `-D` to a forked test JVM, so `-PrelayDir=/path/to/
+// sinch-push-relay` is forwarded here. With neither set, the fixture is the
+// pinned copy `npm run proto:fetch` writes to proto-testdata/ (gitignored; run
+// proto:fetch before testDebugUnitTest or the suite skips), and the sibling
+// checkout at ../../sinch-push-relay is the last resort.
+tasks.withType(Test).configureEach {
+  // The fixture is an input Gradle cannot otherwise see: proto-testdata/ is
+  // gitignored and written by `npm run proto:fetch`, so declaring the directory
+  // re-runs the suite when the pinned vectors change. It stays valid (empty)
+  // before the first fetch.
+  inputs.dir(file("../proto-testdata")).optional().withPropertyName("goldenVectors")
+  if (project.hasProperty("relayDir")) {
+    systemProperty "relay.dir", project.property("relayDir")
+    // Two runs that resolve a different fixture must not share a result.
+    inputs.property("relayDir", project.property("relayDir"))
+  }
 }

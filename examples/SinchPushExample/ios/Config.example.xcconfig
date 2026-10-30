@@ -1,0 +1,17 @@
+// Copy to Config.xcconfig (`npm run setup` or `pod install` does this when it is
+// missing); Config.xcconfig is git-ignored. Every value is read by both the app
+// target and the NotificationService extension.
+
+// Your Apple Developer Team ID (Membership page on developer.apple.com).
+// Leave empty to build for the simulator only; a real device needs it.
+DEVELOPMENT_TEAM =
+
+// Bundle id of the app. Register it in your Apple Developer account with the
+// Push Notifications capability. The NotificationService extension uses
+// $(APP_BUNDLE_ID).NotificationService and has to be registered as well.
+APP_BUNDLE_ID = com.example.sinchpush
+
+// App Group shared by the app and the extension (register it in your account and
+// enable it for both App IDs). The SDK uses it to mirror the report credential
+// to the extension. It has to equal `iosAppGroup` in src/config.ts.
+APP_GROUP = group.com.example.sinchpush

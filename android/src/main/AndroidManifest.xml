@@ -1,5 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+        The push socket relay's FOREGROUND_SERVICE permissions and
+        SinchPushSocketService live in src/relay/AndroidManifest.xml, merged only
+        when SinchPush_relay=true (see android/build.gradle). The relay is off by
+        default, so a default build declares no foreground service at all.
+
+        The FCM default notification channel <meta-data> lives in
+        src/channel/AndroidManifest.xml (and src/relay-channel/, with the relay),
+        merged unless SinchPush_defaultNotificationChannel=false or the FCM
+        service is disabled, so a host that declares its own channel id does not
+        hit a manifest-merger conflict.
+    -->
+
     <!--
         Auto-detected Firebase Messaging integration. The service is gated by the
         SinchPush_fcmServiceEnabled manifest placeholder, which build.gradle sets

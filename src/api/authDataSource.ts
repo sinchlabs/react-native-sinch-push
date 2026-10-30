@@ -4,6 +4,7 @@ import type {
   AuthRepository,
   SinchIdentity,
 } from './authRepository';
+import { decodeJwtClaims } from './jwtClaims';
 import { setAuthToken } from './transport';
 import type { TokenStorage } from './tokenStorage';
 
@@ -33,7 +34,8 @@ export class DefaultAuthDataSource implements AuthDataSource {
       cached.projectID === config.projectID &&
       cached.configID === config.configID &&
       cached.region === config.region &&
-      identityHashOf(identity) === cached.identityHash
+      identityHashOf(identity) === cached.identityHash &&
+      !isExpired(cached.accessToken)
     ) {
       setAuthToken(cached.accessToken);
       return cached;
@@ -73,7 +75,9 @@ export class DefaultAuthDataSource implements AuthDataSource {
 
   async identityHashValue(): Promise<string | null> {
     const m = await this.storage.read();
-    return m?.identityHash ?? null;
+    if (!m) return null;
+    // A stored token is plain JSON, so the model's `identityHash` getter is gone.
+    return m.identityHash ?? (m.sinchIdentity ? identityHashOf(m.sinchIdentity) : null);
   }
 
   async deleteToken(): Promise<void> {
@@ -82,7 +86,13 @@ export class DefaultAuthDataSource implements AuthDataSource {
   }
 }
 
-function identityHashOf(identity: SinchIdentity): string {
+/** Whether the JWT carries an `exp` that has passed (no `exp`: not expired). */
+function isExpired(accessToken: string): boolean {
+  const exp = decodeJwtClaims(accessToken)?.exp;
+  return exp !== undefined && exp * 1000 <= Date.now();
+}
+
+export function identityHashOf(identity: SinchIdentity): string {
   if (identity.kind === 'selfSignedWithAppSecret') {
     return `selfSigned.${identity.userId}`;
   }

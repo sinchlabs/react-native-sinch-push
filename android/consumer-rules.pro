@@ -16,3 +16,22 @@
 # and so R8 does not strip the FirebaseMessagingService superclass reference.
 -keep class com.sinchpush.SinchPushFirebaseMessagingService { *; }
 -keep class com.sinchpush.FcmProvider { *; }
+-keep class com.sinchpush.socket.SinchPushSocketService { *; }
+
+# No rules for the Square Wire types in android/src/main/wire, deliberately.
+#
+# Wire's generated code contains no reflection at all — no Class.forName, no
+# getDeclaredField, no enum valueOf by string — so nothing has to be kept for
+# ProtoAdapter to find a field. The two things the generator *does* rely on are
+# already covered by the ruleset AGP applies to every app build
+# (com.android.tools.build:gradle's proguard-common.txt):
+#
+#   -keepclassmembers enum * { public static **[] values(); ... valueOf(...) }
+#   -keepclassmembers class * implements android.os.Parcelable {
+#       public static final ** CREATOR; }
+#
+# which is why `android = true` (AndroidMessage -> Parcelable) is safe without
+# anything added here.
+#
+# The generated classes are reachable anyway: FrameCodec's tag table names every
+# adapter it uses, so R8 cannot shrink them away from the code that reads them.

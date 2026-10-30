@@ -1,7 +1,11 @@
 package com.sinchpush
 
+import android.content.Intent
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.sinchpush.socket.NativeReports
+import com.sinchpush.socket.SharedReportOutbox
+import com.sinchpush.socket.SharedSeenSet
 
 /**
  * Library-owned [FirebaseMessagingService] that forwards token events and inbound
@@ -27,41 +31,75 @@ class SinchPushFirebaseMessagingService : FirebaseMessagingService() {
     SinchPushEmitter.onNewToken(token)
   }
 
+  /**
+   * Every FCM intent reaches this first, including a `notification` + `data`
+   * message that the system displays itself while the app is backgrounded or
+   * killed - [onMessageReceived] is *not* called for that one. The relay is off
+   * by default and the backend then sends exactly that shape, so this is where
+   * its delivery is recorded. Only a message intent is recorded - a token or
+   * `deleted_messages` intent is passed straight through. The decision and the
+   * order live in [ProviderPushIntent].
+   *
+   * The report is queued (durably) and the system display is left entirely to
+   * `super`; the upload runs after it, so a slow network never delays the
+   * notification. The same message may also reach [onMessageReceived] (data-only,
+   * or the app in the foreground): the outbox remembers the key it queued, so
+   * that second sight queues nothing, and the seen set is only marked once
+   * `super` is done - marking it earlier would make [onMessageReceived] drop the
+   * message and JS would never hear of it.
+   */
+  override fun handleIntent(intent: Intent) {
+    ProviderPushIntent(
+      seen = SharedSeenSet.get(applicationContext),
+      outbox = SharedReportOutbox.get(applicationContext),
+      onReportQueued = SinchPushEmitter::onReportQueued,
+      flush = { NativeReports.flush(applicationContext) },
+      ensureChannel = { SinchPushNotifications.ensureChannel(applicationContext) },
+    ).handle(intent.action, intent::getStringExtra) { super.handleIntent(intent) }
+  }
+
   override fun onMessageReceived(message: RemoteMessage) {
     super.onMessageReceived(message)
+    SinchPushNotifications.ensureChannel(applicationContext)
+    var queued = false
     val notification = message.notification
-    SinchPushEmitter.onMessage(
+    // One seen set per process, shared with the socket client: a message the
+    // socket (or an earlier FCM delivery) already handled is dropped here - no
+    // JS event, no notification - and a new one is marked so the socket's copy
+    // becomes the duplicate.
+    PushMessageHandler(
+      dedupe = PushDedupe(
+        seen = SharedSeenSet.get(applicationContext),
+        outbox = SharedReportOutbox.get(applicationContext),
+        onQueued = {
+          queued = true
+          SinchPushEmitter.onReportQueued()
+        },
+      ),
+      emit = { data, title, body ->
+        SinchPushEmitter.onMessage(data = data, title = title, body = body)
+      },
+      // A Sinch message is rendered under the same identity the socket uses
+      // (tag = message_id, one constant id), so a second copy replaces rather
+      // than duplicates; one with no id keeps the tag + id derived from FCM's
+      // own `messageId`.
+      show = { title, body, data, tag, notificationId ->
+        SinchPushNotifications.show(
+          context = applicationContext,
+          title = title,
+          body = body,
+          data = data,
+          tag = tag,
+          notificationId = notificationId,
+        )
+      },
+    ).handle(
+      fcmMessageId = message.messageId,
       data = message.data,
       title = notification?.title,
       body = notification?.body,
     )
-    // Surface the push in the system tray regardless of app state. When the
-    // app is backgrounded or terminated, FCM's own delivery of a
-    // `notification`-payload message would have already shown one via the
-    // system; calling `show` again is harmless because the tag+id pair is
-    // stable per `messageId`.
-    SinchPushNotifications.show(
-      context = applicationContext,
-      title = notification?.title,
-      body = notification?.body,
-      data = message.data,
-      tag = message.messageId,
-      notificationId = notificationIdFor(message.messageId),
-    )
-  }
-
-  private fun notificationIdFor(messageId: String?): Int {
-    if (messageId.isNullOrEmpty()) return DEFAULT_NOTIFICATION_ID
-    var h = 0
-    for (c in messageId) {
-      h = h * 31 + c.code
-    }
-    // Coalesce to the default id space — keeps recent pushes from saturating
-    // the tray and ensures taps on a single thread land on the same id.
-    return h and 0x7FFF_FFFF
-  }
-
-  companion object {
-    private const val DEFAULT_NOTIFICATION_ID = 1
+    // After the message was emitted and rendered, so the network never delays it.
+    if (queued) NativeReports.flush(applicationContext)
   }
 }

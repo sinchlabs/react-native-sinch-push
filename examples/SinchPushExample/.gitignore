@@ -1,0 +1,14 @@
+node_modules/
+ios/Pods/
+ios/build/
+ios/.xcode.env.local
+ios/Config.xcconfig
+android/build/
+android/app/build/
+android/.gradle/
+android/app/.cxx/
+android/local.properties
+android/app/google-services.json
+.env
+src/config.ts
+.DS_Store

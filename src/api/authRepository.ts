@@ -6,6 +6,7 @@ import {
   IssueTokenWithSignedUuidRequestSchema,
   SdkService,
 } from '../generated/sinch/chat/sdk/v1alpha2/sdk_pb';
+import { decodeJwtClaims } from './jwtClaims';
 
 export type Region = 'eu1' | 'us1' | 'custom';
 
@@ -59,23 +60,7 @@ export class AuthModel {
   }
 
   getUserID(): string | null {
-    try {
-      const parts = this.accessToken.split('.');
-      if (parts.length !== 3 || !parts[1]) return null;
-      const padded = parts[1].padEnd(
-        parts[1].length + ((4 - (parts[1].length % 4)) % 4),
-        '='
-      );
-      const json = atob(padded.replace(/-/g, '+').replace(/_/g, '/'));
-      const payload: unknown = JSON.parse(json);
-      if (typeof payload !== 'object' || payload === null || !('uuid' in payload)) {
-        return null;
-      }
-      const uuid = payload.uuid;
-      return typeof uuid === 'string' ? uuid : null;
-    } catch {
-      return null;
-    }
+    return decodeJwtClaims(this.accessToken)?.uuid ?? null;
   }
 }
 

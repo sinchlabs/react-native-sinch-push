@@ -1,17 +1,17 @@
 {
   "name": "@sinch/react-native-sinch-push",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "React Native SDK for Sinch Push — identity registration and push receive handling, with native APNs (iOS) and Firebase Cloud Messaging (Android) device token capture. Supports both the old and new (TurboModule) architectures.",
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
   "types": "./lib/typescript/commonjs/src/index.d.ts",
-  "react-native": "src/index",
-  "source": "src/index",
+  "react-native": "src/index.tsx",
+  "source": "src/index.tsx",
   "exports": {
     ".": {
       "react-native": {
         "types": "./lib/typescript/commonjs/src/index.d.ts",
-        "default": "./src/index"
+        "default": "./src/index.tsx"
       },
       "import": {
         "types": "./lib/typescript/module/src/index.d.ts",
@@ -29,17 +29,20 @@
     "lib",
     "android",
     "ios",
-    "cpp",
     "*.podspec",
+    "CHANGELOG.md",
     "react-native.config.js",
     "!ios/build",
     "!ios/generated",
+    "!ios/SinchPushSocketTests",
     "!android/build",
     "!android/generated",
     "!android/gradle",
+    "!android/settings.gradle",
     "!android/gradlew",
     "!android/gradlew.bat",
     "!android/local.properties",
+    "!android/src/test",
     "!**/__tests__",
     "!**/__fixtures__",
     "!**/__mocks__",
@@ -48,12 +51,11 @@
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:android": "cd android && ./gradlew testDebugUnitTest",
     "typecheck": "tsc --noEmit",
     "clean": "del-cli lib",
-    "prepack": "bob build",
-    "proto:gen": "buf generate",
-    "proto:gen:protoc": "sh ./protoc.sh",
-    "proto:clean": "sh ./protoc.sh --clean"
+    "prepack": "node scripts/ensure-generated.mjs && bob build",
+    "test:ios": "DEVELOPER_DIR=${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer} swift test --package-path ios/SinchPushSocketTests"
   },
   "keywords": [
     "react-native",

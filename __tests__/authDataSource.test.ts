@@ -57,6 +57,27 @@ describe('DefaultAuthDataSource.generateToken', () => {
     expect(second.accessToken).toBe(first.accessToken);
   });
 
+  it('mints a new token when the cached one has expired', async () => {
+    const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url');
+    const expired = `${b64({ alg: 'HS256' })}.${b64({ exp: Math.floor(Date.now() / 1000) - 10 })}.sig`;
+    const storage = new InMemoryStorage();
+    const { repo, calls } = makeRepo();
+    const identity = { kind: 'selfSigned' as const, userId: 'alice', signedUserId: 'sig-1' };
+    await storage.save(
+      new AuthModel({
+        accessToken: expired,
+        sinchIdentity: identity,
+        ...config,
+      })
+    );
+    const dataSource = new DefaultAuthDataSource(repo, storage);
+
+    const token = await dataSource.generateToken(config, identity);
+
+    expect(calls.n).toBe(1);
+    expect(token.accessToken).toBe('jwt-fresh');
+  });
+
   it('calls the repo and saves when no cached token is present', async () => {
     const storage = new InMemoryStorage();
     const { repo, calls } = makeRepo();
@@ -104,5 +125,28 @@ describe('DefaultAuthDataSource.generateToken', () => {
 
     expect(await storage.read()).toBeNull();
     expect(await dataSource.currentAccessToken()).toBeNull();
+  });
+});
+
+describe('DefaultAuthDataSource.identityHashValue', () => {
+  it('is null when storage is empty', async () => {
+    const { repo } = makeRepo();
+
+    expect(await new DefaultAuthDataSource(repo, new InMemoryStorage()).identityHashValue()).toBeNull();
+  });
+
+  it('survives the JSON round trip the keychain storage puts a token through', async () => {
+    const storage = new InMemoryStorage();
+    const { repo } = makeRepo();
+    const dataSource = new DefaultAuthDataSource(repo, storage);
+    await dataSource.generateToken(config, { kind: 'selfSigned', userId: 'alice', signedUserId: 'sig-1' });
+    const stored = JSON.parse(JSON.stringify(await storage.read())) as AuthModel;
+    const roundTripped = new DefaultAuthDataSource(repo, {
+      read: async () => stored,
+      save: async () => {},
+      delete: async () => {},
+    });
+
+    expect(await roundTripped.identityHashValue()).toBe('selfSigned.alice.sig-1');
   });
 });

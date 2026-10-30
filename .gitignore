@@ -1,6 +1,10 @@
 # Secrets / credentials (never commit)
 **/google-services.json
 **/GoogleService-Info.plist
+*.p8
+*.p12
+*.mobileprovision
+.xcode.env.local
 **/.env
 **/.env.*
 !**/.env.example
@@ -33,12 +37,14 @@ ios/build/
 Pods/
 *.xcworkspace
 
-# Codegen output
-**/generated/
-.protoc-cache/
+# React Native codegen output (rebuilt by the app build). The protobuf code under
+# src/generated, ios/SinchPushSocket/Generated and android/src/main/wire is
+# generated too, but it is committed: hosts compile android/ and ios/ from source.
+ios/generated/
 
-# Internal (removed from history; keep local copies untracked)
-proto/
+# Swift Package Manager (ios/SinchPushSocketTests)
+ios/SinchPushSocketTests/.build/
+.swiftpm/
 
 # Editors
 .idea/

@@ -4,8 +4,12 @@ export * from './tokenStorage';
 
 export {
   type DeviceTokenStorage,
+  type FingerprintStore,
   KeychainDeviceTokenStorage,
+  KeychainFingerprintStore,
   defaultDeviceTokenStorage,
+  defaultFingerprintStore,
+  resolveFingerprintStore,
 } from './deviceTokenStorage';
 
 export { onInAppMessageHandler } from './inAppMessage';
@@ -21,3 +25,15 @@ export {
   setAuthToken,
 } from './transport';
 export { type PushRepository, DefaultPushRepository } from './pushRepository';
+export {
+  type SubscribeDeviceInfo,
+  isDeviceInfo,
+  subscribeFingerprint,
+  toSubscribeDeviceInfo,
+} from './deviceInfo';
+export {
+  type ReportOutboxDeps,
+  type ReportOutboxEntry,
+  ReportOutboxFlusher,
+} from './reportOutbox';
+export { type SharedReportRecord, buildSharedReportRecord } from './sharedReportSession';

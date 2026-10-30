@@ -5,6 +5,12 @@
 // The native side emits:
 //   'SinchPush:onTokenReceived'  -> { token: string, type: 'apns' | 'fcm' }
 //   'SinchPush:onPushReceived'   -> { data: Record<string, string>, source, title?, body?, identity? }
+//   'SinchPush:onDeviceInfoChanged' -> { backgroundService?: string } (Android only, RN-043; the
+//                                      payload is informational, the listener re-reads getDeviceInfo())
+//   'SinchPush:onReportQueued'   -> {} (a provider push was queued in the report outbox)
+//   'SinchPushBackgroundWake'    -> { wakeId: string } (iOS: didReceiveRemoteNotification queued a
+//                                   DELIVERED report and is holding its completion handler; answer
+//                                   with `completeBackgroundWake(wakeId, sent)`)
 
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import type { Spec } from '../NativeSinchPush';
@@ -30,6 +36,9 @@ const SinchPushNativeModule: Spec = resolvedModule;
 
 export const EVENT_PUSH_RECEIVED = 'SinchPush:onPushReceived';
 export const EVENT_TOKEN_RECEIVED = 'SinchPush:onTokenReceived';
+export const EVENT_DEVICE_INFO_CHANGED = 'SinchPush:onDeviceInfoChanged';
+export const EVENT_REPORT_QUEUED = 'SinchPush:onReportQueued';
+export const EVENT_BACKGROUND_WAKE = 'SinchPushBackgroundWake';
 
 const emitter = new NativeEventEmitter(
   SinchPushNativeModule as unknown as ConstructorParameters<typeof NativeEventEmitter>[0],
@@ -53,5 +62,22 @@ export function subscribeToPush(handler: (m: SinchPushMessage) => void): Subscri
 
 export function subscribeToToken(handler: (t: DeviceToken) => void): Subscription {
   const sub = emitter.addListener(EVENT_TOKEN_RECEIVED, (t: DeviceToken) => handler(t));
+  return { remove: () => sub.remove() };
+}
+
+export function subscribeToDeviceInfoChanged(handler: () => void): Subscription {
+  const sub = emitter.addListener(EVENT_DEVICE_INFO_CHANGED, () => handler());
+  return { remove: () => sub.remove() };
+}
+
+export function subscribeToReportQueued(handler: () => void): Subscription {
+  const sub = emitter.addListener(EVENT_REPORT_QUEUED, () => handler());
+  return { remove: () => sub.remove() };
+}
+
+export function subscribeToBackgroundWake(handler: (wakeId: string) => void): Subscription {
+  const sub = emitter.addListener(EVENT_BACKGROUND_WAKE, (e: { wakeId?: unknown } | null) => {
+    if (typeof e?.wakeId === 'string' && e.wakeId) handler(e.wakeId);
+  });
   return { remove: () => sub.remove() };
 }

@@ -4,12 +4,15 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
-import com.facebook.react.modules.core.DeviceEventManagerModule
 
 object SinchPushEmitter {
 
   const val EVENT_TOKEN_RECEIVED = "SinchPush:onTokenReceived"
   const val EVENT_PUSH_RECEIVED = "SinchPush:onPushReceived"
+  const val EVENT_SOCKET_MESSAGE = "SinchPush:onSocketMessage"
+  const val EVENT_SOCKET_STATE = "SinchPush:onSocketState"
+  const val EVENT_DEVICE_INFO_CHANGED = "SinchPush:onDeviceInfoChanged"
+  const val EVENT_REPORT_QUEUED = "SinchPush:onReportQueued"
 
   const val TOKEN_TYPE_FCM = "fcm"
 
@@ -24,10 +27,14 @@ object SinchPushEmitter {
   var latestTokenType: String = TOKEN_TYPE_FCM
     private set
 
+  @Volatile
+  private var latestSocketState: WritableMap? = null
+
   @Synchronized
   fun attachReactContext(context: ReactApplicationContext) {
     reactContext = context
     latestToken?.let { emitToken(it, latestTokenType) }
+    latestSocketState?.let { emit(EVENT_SOCKET_STATE, it) }
   }
 
   @Synchronized
@@ -57,6 +64,40 @@ object SinchPushEmitter {
     emit(EVENT_PUSH_RECEIVED, payload)
   }
 
+  fun onSocketMessage(message: WritableMap) {
+    emit(EVENT_SOCKET_MESSAGE, message)
+  }
+
+  fun onSocketState(state: WritableMap) {
+    latestSocketState = state
+    emit(EVENT_SOCKET_STATE, state)
+  }
+
+  /** Tells JS a provider-push report was queued; JS reads the outbox through the bridge. */
+  fun onReportQueued() {
+    emit(EVENT_REPORT_QUEUED, Arguments.createMap())
+  }
+
+  /**
+   * Tells JS the device info may have changed. The payload is informational -
+   * JS re-reads `getDeviceInfo()` - and the event is not buffered for replay on
+   * attach: JS compares its fingerprint at `initialize`.
+   *
+   * @return whether it was handed to a React context; `false` leaves the caller
+   *   free to offer it again.
+   */
+  fun onDeviceInfoChanged(backgroundService: String): Boolean {
+    val context = reactContext ?: return false
+    val payload: WritableMap = Arguments.createMap()
+    payload.putString("backgroundService", backgroundService)
+    return try {
+      context.emitDeviceEvent(EVENT_DEVICE_INFO_CHANGED, payload)
+      true
+    } catch (t: Throwable) {
+      false
+    }
+  }
+
   fun emitToken(token: String, type: String) {
     val payload: WritableMap = Arguments.createMap()
     payload.putString("token", token)
@@ -66,11 +107,11 @@ object SinchPushEmitter {
 
   private fun emit(eventName: String, params: ReadableMap) {
     val context = reactContext ?: return
-    if (!context.hasActiveReactInstance()) {
-      return
+    // emitDeviceEvent is the bridgeless-safe path.
+    try {
+      context.emitDeviceEvent(eventName, params)
+    } catch (t: Throwable) {
+      // No JS runtime attached yet — buffered replay on attach covers it.
     }
-    context
-      .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-      .emit(eventName, params)
   }
 }

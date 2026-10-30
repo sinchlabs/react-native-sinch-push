@@ -16,6 +16,39 @@ export interface SinchPushConfig {
   customChatApiUrl?: string;
   enableLogging?: boolean;
   autoRegisterForToken?: boolean;
+  /**
+   * iOS only. Setting `appGroup` turns on the Notification Service Extension
+   * support: native mirrors the minimal report credential
+   * (`{ accessToken, reportBaseURL, userId, appId }`, never the HMAC secret) into
+   * the App Group container so the extension can report a push as delivered
+   * before the app runs. The group must be the one on both the app and the
+   * extension target. Without it the SDK still uploads reports from a
+   * background wake with a background URLSession, using app-private storage.
+   * Ignored on Android.
+   */
+  ios?: {
+    /** e.g. `group.com.example.app`. */
+    appGroup?: string;
+  };
+  socket?: {
+    /**
+     * Persisted relay switch; the relay is off by default, so pass `true` to
+     * opt in (on Android also set the gradle property `SinchPush_relay=true`).
+     * Omitted preserves the stored value (default false), so an app that
+     * enabled the relay before upgrading to 1.1.0 stays on until it passes
+     * `false`. While off, socket starts reject with E_RELAY_DISABLED.
+     *
+     * On Android without `SinchPush_relay=true` the relay is not built in:
+     * `isRelayEnabled()` reads `false` even after `true` is passed here.
+     */
+    enabled?: boolean;
+    /**
+     * Relay URL; overrides the region. Without it, env 'custom' derives the relay from
+     * `customPushApiUrl` when that is a known Sinch push host, and has the relay disabled otherwise.
+     */
+    customWsUrl?: string;
+    allowInsecureWs?: boolean;
+  };
 }
 
 export interface SignedIdentity {
@@ -88,3 +121,27 @@ export type PushReceiveHandler = (message: SinchPushMessage) => void;
 export type InAppMessageHandler = (message: InAppMessage) => void;
 
 export type TokenReceiveHandler = (token: DeviceToken) => void;
+
+/** `Subscribe.background_service` / `Hello.background_service` (SB-60), by name. */
+export type BackgroundServiceName =
+  | 'UNSUPPORTED'
+  | 'DISABLED'
+  | 'ENABLED_RUNNING'
+  | 'ENABLED_NOT_RUNNING'
+  | 'RELAY_DISABLED'; // the relay is off in the SDK (SB-66)
+
+/**
+ * What native reports about this install: the same facts the relay is told in
+ * `Hello` (SB-59) and the push API in `Subscribe`.
+ */
+export interface DeviceInfo {
+  /** The per-install id. */
+  installationId: string;
+  platform: 'ios' | 'android';
+  osVersion: string;
+  /** `"<sdk-name>/<version>"`. */
+  sdkVersion: string;
+  /** iOS bundle identifier / Android applicationId. */
+  bundleId: string;
+  backgroundService: BackgroundServiceName;
+}

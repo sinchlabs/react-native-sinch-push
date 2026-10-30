@@ -34,6 +34,19 @@ describe('AuthModel.getUserID', () => {
     expect(token.getUserID()).toBeNull();
   });
 
+  it('decodes a unicode uuid (UTF-8 safe)', () => {
+    const token = new AuthModel({
+      accessToken: makeJwt({ uuid: 'usér-🎉-42' }),
+      sinchIdentity: { kind: 'selfSigned', userId: 'usér-🎉-42', signedUserId: 's' },
+      clientID: 'c',
+      projectID: 'p',
+      configID: 'cfg',
+      region: 'eu1',
+    });
+
+    expect(token.getUserID()).toBe('usér-🎉-42');
+  });
+
   it('returns null when the payload has no uuid', () => {
     const token = new AuthModel({
       accessToken: makeJwt({ project_id: 'p1' }),

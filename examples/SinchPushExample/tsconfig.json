@@ -1,0 +1,11 @@
+{
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "compilerOptions": {
+    // The SDK is consumed from source (`file:../..`, "react-native" export
+    // condition), so its files are type-checked with these options too.
+    "module": "esnext",
+    "lib": ["es2022", "dom"],
+    "types": ["react-native", "jest", "node"]
+  },
+  "include": ["App.tsx", "index.js", "src", "scripts"]
+}
